@@ -1,0 +1,5193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOS Field Training Exercise - Drone Scenario</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #0a0a0a;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* Home Screen */
+        #home-screen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a0a 100%);
+        }
+
+        #home-screen img {
+            max-width: 400px;
+            margin-bottom: 60px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.02); }
+        }
+
+        .start-prompt {
+            font-size: 1.5rem;
+            color: #00ff00;
+            animation: blink 1s step-end infinite;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+
+        /* Version Select Screen */
+        #version-screen {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at 30% 20%, rgba(0, 255, 0, 0.08), rgba(0, 0, 0, 0.95) 55%),
+                        rgba(0, 0, 0, 0.95);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 28px;
+        }
+
+        #version-screen.active {
+            display: flex;
+        }
+
+        .version-panel {
+            width: min(860px, 94vw);
+            border: 3px solid #00ff00;
+            box-shadow: 0 0 40px rgba(0, 255, 0, 0.25);
+            background: rgba(0, 0, 0, 0.75);
+            padding: 26px 26px 24px;
+        }
+
+        .version-title {
+            font-size: 1.05rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #00ff00;
+            margin-bottom: 10px;
+        }
+
+        .version-sub {
+            color: #888;
+            margin-bottom: 18px;
+            line-height: 1.5;
+        }
+
+        .version-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+
+        .version-btn {
+            cursor: pointer;
+            background: rgba(0, 255, 0, 0.08);
+            border: 2px solid rgba(0, 255, 0, 0.75);
+            color: #00ff00;
+            padding: 16px 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: background 0.18s, color 0.18s, border-color 0.18s;
+        }
+
+        .version-btn:hover {
+            background: #00ff00;
+            color: #0a0a0a;
+            border-color: #00ff00;
+        }
+
+        .version-btn.selected {
+            background: rgba(255, 170, 0, 0.16);
+            border-color: rgba(255, 170, 0, 0.95);
+            color: #ffaa00;
+        }
+
+        .version-hint {
+            margin-top: 10px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        /* Intel Console Screen */
+        #intel-screen {
+            display: none;
+            height: 100vh;
+            background: #0d1117;
+            position: relative;
+        }
+
+        .console-frame {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border: 4px solid #1a3a1a;
+            margin: 10px;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 
+                inset 0 0 100px rgba(0, 255, 0, 0.05),
+                0 0 20px rgba(0, 255, 0, 0.1);
+        }
+
+        .console-header {
+            background: linear-gradient(180deg, #1a3a1a 0%, #0d1117 100%);
+            padding: 15px 25px;
+            border-bottom: 2px solid #00ff00;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .console-title {
+            font-size: 1.2rem;
+            color: #00ff00;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .console-status {
+            display: flex;
+            gap: 20px;
+            font-size: 0.8rem;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .status-light {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #00ff00;
+            animation: statusPulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes statusPulse {
+            0%, 100% { box-shadow: 0 0 5px #00ff00; }
+            50% { box-shadow: 0 0 15px #00ff00, 0 0 25px #00ff00; }
+        }
+
+        .console-body {
+            padding: 30px;
+            height: calc(100% - 70px);
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .console-body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.1) 0px,
+                rgba(0, 0, 0, 0.1) 1px,
+                transparent 1px,
+                transparent 3px
+            );
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .intel-section {
+            margin-bottom: 30px;
+            display: none;
+        }
+
+        .intel-section.active {
+            display: block;
+        }
+
+        .intel-header {
+            color: #ffaa00;
+            font-size: 1rem;
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #333;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .intel-text {
+            color: #00ff00;
+            font-size: 1.1rem;
+            line-height: 1.8;
+            white-space: pre-wrap;
+        }
+
+        .intel-text .cursor {
+            display: inline-block;
+            width: 10px;
+            height: 1.2em;
+            background: #00ff00;
+            margin-left: 2px;
+            animation: cursorBlink 0.5s step-end infinite;
+            vertical-align: text-bottom;
+        }
+
+        @keyframes cursorBlink {
+            50% { opacity: 0; }
+        }
+
+        .classified-stamp {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-15deg);
+            font-size: 4rem;
+            color: rgba(255, 0, 0, 0.15);
+            font-weight: bold;
+            letter-spacing: 10px;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        /* Map Display */
+        #map-container {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+            border: 3px solid #00ff00;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.3);
+            background: #0a0a0a;
+            padding: 10px;
+        }
+
+        .map-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        #map-container img.map-image {
+            max-width: 80vw;
+            max-height: 70vh;
+            display: block;
+        }
+
+        /* SVG Flight Path Overlay */
+        .flight-path-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .flight-path {
+            fill: none;
+            stroke: rgba(255, 0, 0, 0.3);
+            stroke-width: 0.4;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-dasharray: 0.8, 0.8;
+            opacity: 0;
+            transition: opacity 0.5s ease-in;
+        }
+
+        .flight-path.animate {
+            opacity: 1;
+        }
+
+        /* Traveled path - shows where drone has been */
+        .flight-path-traveled {
+            fill: none;
+            stroke: #ff0000;
+            stroke-width: 0.4;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            filter: drop-shadow(0 0 0.5px rgba(255, 0, 0, 0.6));
+        }
+
+        /* Drone marker that follows the path - GLOWING DOT */
+        .drone-marker {
+            fill: #ff0000;
+            opacity: 0;
+        }
+
+        .drone-marker.animate {
+            opacity: 1;
+            filter: 
+                drop-shadow(0 0 1px rgba(255, 0, 0, 1))
+                drop-shadow(0 0 2px rgba(255, 0, 0, 0.8))
+                drop-shadow(0 0 3px rgba(255, 50, 50, 0.6));
+            animation: pulseDrone 0.4s ease-in-out infinite;
+        }
+
+        @keyframes pulseDrone {
+            0%, 100% { 
+                r: 0.8;
+            }
+            50% { 
+                r: 1.1;
+            }
+        }
+
+        /* Outer glow ring */
+        .drone-glow-outer {
+            fill: none;
+            stroke: rgba(255, 0, 0, 0.4);
+            stroke-width: 0.3;
+            opacity: 0;
+        }
+
+        .drone-glow-outer.animate {
+            opacity: 1;
+            animation: pulseOuter 0.4s ease-in-out infinite;
+        }
+
+        @keyframes pulseOuter {
+            0%, 100% { 
+                r: 1.5;
+                stroke-opacity: 0.4;
+            }
+            50% { 
+                r: 2;
+                stroke-opacity: 0.2;
+            }
+        }
+
+        /* Inner bright core */
+        .drone-core {
+            fill: #ffffff;
+            opacity: 0;
+        }
+
+        .drone-core.animate {
+            opacity: 1;
+            filter: drop-shadow(0 0 0.5px rgba(255, 255, 255, 1));
+            animation: pulseCore 0.4s ease-in-out infinite;
+        }
+
+        @keyframes pulseCore {
+            0%, 100% { 
+                r: 0.25;
+            }
+            50% { 
+                r: 0.35;
+            }
+        }
+
+        /* Start and end markers */
+        .path-marker {
+            fill: none;
+            stroke-width: 0.3;
+        }
+
+        .start-marker {
+            stroke: #00ff00;
+            filter: drop-shadow(0 0 0.5px rgba(0, 255, 0, 0.8));
+        }
+
+        .end-marker {
+            stroke: #ff6600;
+            filter: drop-shadow(0 0 0.5px rgba(255, 102, 0, 0.8));
+        }
+
+        .marker-label {
+            font-family: 'Courier New', monospace;
+            font-size: 2px;
+            font-weight: bold;
+            text-anchor: middle;
+            filter: drop-shadow(0 0 0.3px rgba(0, 0, 0, 0.8));
+        }
+
+        .start-label {
+            fill: #00ff00;
+        }
+
+        .end-label {
+            fill: #ff6600;
+        }
+
+        /* Background trail effect - subtle guide */
+        .flight-path-trail {
+            fill: none;
+            stroke: rgba(255, 0, 0, 0.1);
+            stroke-width: 2;
+            stroke-linecap: round;
+            opacity: 0;
+        }
+
+        .flight-path-trail.animate {
+            opacity: 1;
+        }
+
+        /* Traveled path styling - glowing trail behind drone */
+        .flight-path-traveled {
+            fill: none;
+            stroke: #ff0000;
+            stroke-width: 0.4;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            filter: drop-shadow(0 0 3px rgba(255, 0, 0, 0.8)) drop-shadow(0 0 6px rgba(255, 0, 0, 0.4));
+        }
+
+        #map-container .map-label {
+            text-align: center;
+            padding: 10px;
+            color: #00ff00;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .map-continue-prompt {
+            text-align: center;
+            padding: 15px;
+            color: #00ff00;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            animation: blink 1s step-end infinite;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        .map-continue-prompt.visible {
+            opacity: 1;
+        }
+
+        .map-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 99;
+        }
+
+        .map-overlay.active, #map-container.active {
+            display: block;
+        }
+
+        /* Video Feed Modal */
+        #video-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 300;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #video-modal.active {
+            display: flex;
+        }
+
+        /* Cinematic Animation Styles */
+        .cinematic-animation-wrapper {
+            width: 100%;
+            max-height: 70vh;
+            position: relative;
+            overflow: hidden;
+            background: #000;
+            line-height: 0;
+        }
+
+        .cinematic-map-wrapper {
+            position: relative;
+            width: 100%;
+            height: auto;
+            transition: none;
+            /* Top-left origin so matrix(s,0,0,s,e,f) matches our camera math */
+            transform-origin: 0 0;
+        }
+
+        .cinematic-map-wrapper.animating {
+            transition: none;
+        }
+
+        .cinematic-map {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        .cinematic-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .cinematic-drone {
+            opacity: 0;
+            pointer-events: none;
+            filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.8));
+            transition: opacity 0.5s;
+        }
+
+        .cinematic-drone.animating {
+            opacity: 1;
+        }
+
+        .video-container {
+            position: relative;
+            border: 3px solid #00ff00;
+            box-shadow: 0 0 40px rgba(0, 255, 0, 0.3), inset 0 0 20px rgba(0, 0, 0, 0.5);
+            background: #000;
+            max-width: 85vw;
+            max-height: 85vh;
+        }
+
+        .video-header {
+            background: linear-gradient(180deg, #1a3a1a 0%, #0d1117 100%);
+            padding: 10px 20px;
+            border-bottom: 2px solid #00ff00;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .video-title {
+            color: #00ff00;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .video-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .recording-indicator {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: #ff4444;
+            font-size: 0.8rem;
+        }
+
+        .recording-dot {
+            width: 10px;
+            height: 10px;
+            background: #ff4444;
+            border-radius: 50%;
+            animation: recordingPulse 1s ease-in-out infinite;
+        }
+
+        @keyframes recordingPulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 5px #ff4444; }
+            50% { opacity: 0.5; box-shadow: 0 0 15px #ff4444; }
+        }
+
+        .video-feed {
+            width: 100%;
+            max-height: 70vh;
+            display: block;
+        }
+
+        /* Magnifier overlay (hover zoom) */
+        .video-magnifier {
+            position: absolute;
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            border: 3px solid #00ff00;
+            box-shadow: 0 0 25px rgba(0, 255, 0, 0.35), inset 0 0 15px rgba(0, 0, 0, 0.6);
+            background: rgba(0, 0, 0, 0.25);
+            display: none;
+            pointer-events: none;
+            z-index: 450;
+            overflow: hidden;
+        }
+
+        .video-magnifier canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .video-overlay-info {
+            position: absolute;
+            bottom: 50px;
+            left: 10px;
+            color: #00ff00;
+            font-size: 0.75rem;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 5px 10px;
+            border: 1px solid #00ff00;
+        }
+
+        .video-timestamp {
+            position: absolute;
+            bottom: 50px;
+            right: 10px;
+            color: #00ff00;
+            font-size: 0.75rem;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 5px 10px;
+            border: 1px solid #00ff00;
+            font-family: 'Courier New', monospace;
+        }
+
+        .video-footer {
+            background: linear-gradient(0deg, #1a3a1a 0%, #0d1117 100%);
+            padding: 8px 20px;
+            border-top: 2px solid #00ff00;
+            text-align: center;
+            color: #888;
+            font-size: 0.8rem;
+        }
+
+        /* Zone Video Feed Modal */
+        #zone-video-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 400;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #zone-video-modal.active {
+            display: flex;
+        }
+
+        /* Test processing overlay (terminal-style) */
+        #test-processing-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.96);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 30px;
+        }
+
+        #test-processing-modal.active {
+            display: flex;
+        }
+
+        /* Student test terminal modal */
+        #student-test-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.96);
+            z-index: 999;
+            justify-content: center;
+            align-items: center;
+            padding: 12px;
+        }
+
+        #student-test-modal.active {
+            display: flex;
+        }
+
+        .test-terminal {
+            width: min(900px, 92vw);
+            border: 3px solid #00ff00;
+            box-shadow: 0 0 40px rgba(0, 255, 0, 0.25);
+            background: #000;
+        }
+
+        /* Student test: larger terminal (wide + tall) than the processing overlay */
+        #student-test-modal .test-terminal {
+            width: min(1180px, 97vw);
+            height: min(96vh, calc(100vh - 16px));
+            max-height: min(96vh, calc(100vh - 16px));
+            display: flex;
+            flex-direction: column;
+        }
+
+        #student-test-modal .test-terminal-header {
+            flex-shrink: 0;
+        }
+
+        #student-test-modal .test-terminal-body.student-test-body-wrap {
+            flex: 1 1 0;
+            min-height: 0;
+            max-height: none;
+        }
+
+        .test-terminal-header {
+            background: linear-gradient(180deg, #1a3a1a 0%, #0d1117 100%);
+            padding: 10px 16px;
+            border-bottom: 2px solid #00ff00;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .test-terminal-body {
+            padding: 18px;
+            color: #00ff00;
+            font-size: 1rem;
+            line-height: 1.6;
+            min-height: 260px;
+            position: relative;
+        }
+
+        .test-terminal-body.student-test-body-wrap {
+            display: flex;
+            flex-direction: column;
+            min-height: 360px;
+            /* Height cap when not inside #student-test-modal (fallback) */
+            max-height: min(92vh, 960px);
+            overflow: hidden;
+        }
+
+        .student-test-history {
+            flex: 0 1 auto;
+            max-height: min(26vh, 200px);
+            min-height: 72px;
+            overflow-y: auto;
+            border-bottom: 1px solid #222;
+            padding-bottom: 12px;
+            margin-bottom: 12px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .student-test-history .log-line {
+            margin: 0.15em 0;
+        }
+
+        .student-test-prompt {
+            flex: 1 1 0;
+            min-height: 0;
+            overflow-x: hidden;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .student-test-prompt .prompt-block {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .student-test-prompt .prompt-title {
+            color: #ffaa00;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .student-test-prompt .prompt-text {
+            color: #00ff00;
+            line-height: 1.55;
+        }
+
+        .student-test-prompt .prompt-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .student-test-prompt .prompt-actions.prompt-actions-building {
+            width: 100%;
+            padding: 10px 0 12px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #222;
+        }
+
+        .student-test-prompt .prompt-actions.prompt-actions-building select {
+            flex: 1 1 200px;
+            min-width: 160px;
+        }
+
+        .student-test-prompt .prompt-actions.prompt-actions-building .test-btn {
+            flex: 0 0 auto;
+            min-width: 140px;
+        }
+
+        .student-test-prompt input[type="text"],
+        .student-test-prompt select {
+            max-width: 100%;
+            padding: 10px 12px;
+            background: #0a0a0a;
+            border: 2px solid #00ff00;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            outline: none;
+        }
+
+        .student-test-prompt .hint {
+            color: #666;
+            font-size: 0.8rem;
+        }
+
+        /* Q5 building step: map + markers — image rules mirror scoring-tool.html .map-container img so % coords match. */
+        .student-test-map-wrap {
+            position: relative;
+            display: block;
+            width: 100%;
+            border: 2px solid #1a4a1a;
+            background: #0a0a0a;
+            margin: 10px 0 6px;
+            line-height: 0;
+        }
+
+        .student-test-map-wrap > img {
+            display: block;
+            width: 100%;
+            height: auto;
+            /* Must match scoring-tool.html — no object-fit (breaks overlay vs painted bitmap). */
+            max-height: min(68vh, 700px);
+        }
+
+        .student-test-map-wrap > svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: auto;
+        }
+
+        .student-test-map-marker {
+            cursor: pointer;
+        }
+
+        .student-test-map-marker circle {
+            fill: rgba(0, 0, 0, 0.35);
+            stroke: rgba(0, 255, 0, 0.85);
+            stroke-width: 0.35;
+            transition: fill 0.12s, stroke 0.12s;
+        }
+
+        .student-test-map-marker text {
+            font-size: 3px;
+            fill: rgba(255, 255, 255, 0.95);
+            text-anchor: middle;
+            dominant-baseline: middle;
+            pointer-events: none;
+            font-weight: bold;
+        }
+
+        .student-test-map-marker:hover circle {
+            fill: rgba(0, 255, 0, 0.14);
+            stroke: #00ff00;
+        }
+
+        .student-test-map-marker.selected circle {
+            fill: rgba(255, 170, 0, 0.28);
+            stroke: rgba(255, 170, 0, 0.95);
+        }
+
+        .test-terminal-body .dim { color: #666; }
+        .test-terminal-body .warn { color: #ffaa00; }
+        .test-terminal-body .ok { color: #00ff00; font-weight: bold; }
+        .test-terminal-body .fail { color: #ff4444; font-weight: bold; }
+
+        .test-form {
+            display: grid;
+            gap: 14px;
+            margin-top: 10px;
+        }
+
+        .test-row {
+            display: grid;
+            grid-template-columns: 220px 1fr;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .test-row label {
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .test-row select, .test-row input[type="text"] {
+            width: 100%;
+            padding: 10px 12px;
+            background: #0a0a0a;
+            border: 2px solid #00ff00;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            outline: none;
+        }
+
+        .test-row select:focus, .test-row input[type="text"]:focus {
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.25);
+        }
+
+        .test-suspect-table {
+            margin-top: 8px;
+            border: 1px solid #222;
+            border-radius: 8px;
+            overflow-x: auto;
+            background: rgba(0, 0, 0, 0.25);
+        }
+
+        .test-suspect-head, .test-suspect-row {
+            display: grid;
+            grid-template-columns: 120px 140px 120px 1fr;
+            gap: 12px;
+            align-items: center;
+            padding: 12px 14px;
+            min-width: 620px;
+        }
+
+        .test-suspect-head {
+            background: rgba(0, 0, 0, 0.55);
+            border-bottom: 1px solid #222;
+            color: #888;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .test-suspect-row {
+            border-bottom: 1px solid #161616;
+        }
+
+        .test-suspect-row:last-child { border-bottom: none; }
+
+        .test-multi {
+            display: grid;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .test-check {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: #00ff00;
+        }
+
+        .test-check input { transform: scale(1.15); }
+
+        .test-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 18px;
+        }
+
+        .test-btn {
+            background: #1a3a1a;
+            color: #00ff00;
+            border: 2px solid #00ff00;
+            padding: 12px 14px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        .test-btn:hover {
+            background: #00ff00;
+            color: #0a0a0a;
+        }
+
+        .test-btn.secondary {
+            border-color: #4488ff;
+            color: #4488ff;
+            background: rgba(20, 40, 70, 0.25);
+        }
+
+        .test-btn.secondary:hover {
+            background: #4488ff;
+            color: #ffffff;
+        }
+
+        .test-terminal-cursor {
+            display: inline-block;
+            width: 10px;
+            height: 1.1em;
+            background: currentColor;
+            margin-left: 4px;
+            animation: cursorBlink 0.5s step-end infinite;
+            vertical-align: text-bottom;
+        }
+
+        /* Continue Drone Prompt */
+        .drone-continue-prompt {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 500;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        .drone-continue-prompt.active {
+            display: block;
+        }
+
+        .prompt-content {
+            background: linear-gradient(180deg, #1a3a1a 0%, #0d1117 100%);
+            border: 3px solid #ffaa00;
+            border-radius: 8px;
+            padding: 30px;
+            min-width: 500px;
+            box-shadow: 
+                0 0 40px rgba(255, 170, 0, 0.5),
+                inset 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .prompt-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #ffaa00;
+        }
+
+        .prompt-icon {
+            font-size: 2rem;
+            color: #ffaa00;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+        }
+
+        .prompt-title {
+            color: #ffaa00;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: bold;
+        }
+
+        .prompt-message {
+            color: #00ff00;
+            font-size: 1.3rem;
+            text-align: center;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .prompt-buttons {
+            display: flex;
+            gap: 15px;
+            flex-direction: column;
+        }
+
+        .prompt-btn {
+            background: #1a3a1a;
+            border: 2px solid #00ff00;
+            color: #00ff00;
+            padding: 15px 25px;
+            font-family: 'Courier New', monospace;
+            font-size: 1rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .prompt-btn:hover {
+            background: #00ff00;
+            color: #0a0a0a;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+            transform: scale(1.02);
+        }
+
+        .prompt-btn:active {
+            transform: scale(0.98);
+        }
+
+        .prompt-btn.btn-no {
+            border-color: #ff4444;
+            color: #ff4444;
+        }
+
+        .prompt-btn.btn-no:hover {
+            background: #ff4444;
+            color: #ffffff;
+            box-shadow: 0 0 20px rgba(255, 68, 68, 0.5);
+        }
+
+        .prompt-btn .btn-label {
+            color: #ffaa00;
+            font-weight: bold;
+        }
+
+        .prompt-btn:hover .btn-label {
+            color: inherit;
+        }
+
+        /* Angle Selection Screen */
+        #angle-selection-screen {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #0a0a0a;
+            z-index: 200;
+        }
+
+        #angle-selection-screen.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .angle-selection-header {
+            background: linear-gradient(180deg, #1a3a1a 0%, #0d1117 100%);
+            padding: 15px 25px;
+            border-bottom: 2px solid #00ff00;
+            text-align: center;
+        }
+
+        .angle-selection-title {
+            color: #00ff00;
+            font-size: 1.3rem;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        .angle-selection-body {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .angle-map-section {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+        }
+
+        .angle-map-container {
+            position: relative;
+            border: 3px solid #00ff00;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.2);
+        }
+
+        .angle-map-container img {
+            max-width: 60vw;
+            max-height: 70vh;
+            display: block;
+        }
+
+        /* Zone Overlay SVG */
+        .zone-overlay-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .drone-zone {
+            fill-opacity: 0.25;
+            stroke-width: 0.4;
+            stroke-dasharray: 1, 0.5;
+            transition: fill-opacity 0.3s, stroke-width 0.3s;
+        }
+
+        .drone-zone.highlighted {
+            fill-opacity: 0.5;
+            stroke-width: 0.6;
+            stroke-dasharray: none;
+        }
+
+        .zone-a {
+            fill: #ff4444;
+            stroke: #ff4444;
+            filter: drop-shadow(0 0 2px rgba(255, 68, 68, 0.6));
+        }
+
+        .zone-a.highlighted {
+            filter: drop-shadow(0 0 5px rgba(255, 68, 68, 0.8));
+        }
+
+        .zone-b {
+            fill: #ffaa00;
+            stroke: #ffaa00;
+            filter: drop-shadow(0 0 2px rgba(255, 170, 0, 0.6));
+        }
+
+        .zone-b.highlighted {
+            filter: drop-shadow(0 0 5px rgba(255, 170, 0, 0.8));
+        }
+
+        .zone-c {
+            fill: #00ff00;
+            stroke: #00ff00;
+            filter: drop-shadow(0 0 2px rgba(0, 255, 0, 0.6));
+        }
+
+        .zone-c.highlighted {
+            filter: drop-shadow(0 0 5px rgba(0, 255, 0, 0.8));
+        }
+
+        .zone-label-text {
+            font-family: 'Courier New', monospace;
+            font-size: 4px;
+            font-weight: bold;
+            fill: #ffffff;
+            text-anchor: middle;
+            dominant-baseline: middle;
+            filter: drop-shadow(0 0 1px rgba(0, 0, 0, 1));
+        }
+
+        /* Environmental Effects (PNG Sequences) */
+        .env-effect {
+            pointer-events: none;
+            image-rendering: crisp-edges;
+        }
+
+        .angle-console-section {
+            width: 400px;
+            min-width: 400px;
+            background: #0d1117;
+            border-left: 2px solid #00ff00;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            min-height: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        /* Scroll prompt + buttons + details; keep manual entry visible at bottom */
+        .angle-console-body {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .console-prompt-header {
+            color: #ffaa00;
+            font-size: 1rem;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+
+        .console-prompt-text {
+            color: #00ff00;
+            font-size: 1.1rem;
+            line-height: 1.8;
+            margin-bottom: 30px;
+        }
+
+        .angle-options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .angle-option {
+            background: #1a3a1a;
+            border: 2px solid #00ff00;
+            color: #00ff00;
+            padding: 15px 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 1rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+            text-align: left;
+        }
+
+        .angle-option:hover {
+            background: #00ff00;
+            color: #0a0a0a;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.4);
+        }
+
+        .angle-option:active {
+            transform: scale(0.98);
+        }
+
+        .angle-option .option-number {
+            color: #ffaa00;
+            margin-right: 10px;
+        }
+
+        .angle-option:hover .option-number {
+            color: #0a0a0a;
+        }
+
+        .angle-input-section {
+            flex-shrink: 0;
+            padding-top: 16px;
+            margin-top: 12px;
+            border-top: 1px solid #333;
+        }
+
+        .angle-input-label {
+            color: #888;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+
+        .angle-input-prompt {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .angle-input-prompt span {
+            color: #00ff00;
+        }
+
+        #angle-input {
+            background: #0a0a0a;
+            border: 2px solid #00ff00;
+            color: #00ff00;
+            padding: 10px 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 1rem;
+            width: 60px;
+            text-align: center;
+            outline: none;
+        }
+
+        #angle-input:focus {
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+        }
+
+
+        /* Position Details Display */
+        .position-details {
+            display: none;
+            background: rgba(0, 50, 0, 0.3);
+            border: 1px solid #00ff00;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 15px;
+            margin-bottom: 15px;
+        }
+
+        .position-details.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        .position-details .position-title {
+            color: #ffaa00;
+            font-size: 1rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .position-details .position-description {
+            color: #00ff00;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .position-details .position-stat {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .position-details .stat-item {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .position-details .stat-label {
+            color: #888;
+        }
+
+        .position-details .stat-value {
+            color: #ffaa00;
+            font-weight: bold;
+        }
+
+        .position-details .stat-value.high {
+            color: #ff4444;
+        }
+
+        .position-details .stat-value.medium {
+            color: #ffaa00;
+        }
+
+        .position-details .stat-value.low {
+            color: #00ff00;
+        }
+
+        /* Time indicator on map */
+        .time-indicator {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #00ff00;
+            padding: 5px 10px;
+            font-size: 0.8rem;
+            border: 1px solid #00ff00;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Continue Prompt - Inline after text */
+        .continue-prompt-inline {
+            color: #00ff00;
+            font-size: 1rem;
+            animation: blink 1s step-end infinite;
+            display: block;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #333;
+        }
+
+        /* Section Transitions */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Priority Alert Styling */
+        .priority-alert {
+            color: #ff4444;
+            font-weight: bold;
+        }
+
+        .highlight {
+            color: #ffff00;
+            font-weight: bold;
+        }
+
+        /* Time/Date Display */
+        .datetime-display {
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        /* Screen Effects */
+        .screen-flicker {
+            animation: flicker 0.15s;
+        }
+
+        @keyframes flicker {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        /* Scrollbar Styling */
+        .console-body::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .console-body::-webkit-scrollbar-track {
+            background: #0d1117;
+        }
+
+        .console-body::-webkit-scrollbar-thumb {
+            background: #1a3a1a;
+            border-radius: 4px;
+        }
+
+        .console-body::-webkit-scrollbar-thumb:hover {
+            background: #00ff00;
+        }
+
+        /* ============================================
+           TEST SUBMISSION "PROCESSING" TERMINAL
+           ============================================ */
+        #processing-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.92);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        #processing-modal.active {
+            display: flex;
+        }
+
+        .processing-terminal {
+            width: min(900px, 92vw);
+            border: 3px solid #00ff00;
+            box-shadow: 0 0 40px rgba(0, 255, 0, 0.25), inset 0 0 30px rgba(0,0,0,0.65);
+            background: linear-gradient(180deg, #0d1117 0%, #050607 100%);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .processing-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 18px;
+            border-bottom: 2px solid #00ff00;
+            background: linear-gradient(180deg, #1a3a1a 0%, #0d1117 100%);
+        }
+
+        .processing-title {
+            color: #00ff00;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-size: 0.95rem;
+        }
+
+        .processing-body {
+            padding: 18px;
+            font-size: 1rem;
+            line-height: 1.8;
+            color: #00ff00;
+            min-height: 260px;
+            max-height: 65vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .processing-body .dim { color: #888; }
+        .processing-body .warn { color: #ffaa00; }
+        .processing-body .ok { color: #00ff00; font-weight: bold; }
+        .processing-body .bad { color: #ff4444; font-weight: bold; }
+
+        .processing-result {
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 1px solid #333;
+            font-size: 1.15rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .processing-result.pass {
+            color: #00ff00;
+            text-shadow: 0 0 10px rgba(0,255,0,0.35);
+        }
+
+        .processing-result.fail {
+            color: #ff4444;
+            text-shadow: 0 0 10px rgba(255,68,68,0.35);
+        }
+
+        .processing-cursor {
+            display: inline-block;
+            width: 10px;
+            height: 1.2em;
+            background: #00ff00;
+            margin-left: 6px;
+            animation: cursorBlink 0.5s step-end infinite;
+            vertical-align: text-bottom;
+        }
+    </style>
+</head>
+<body>
+    <!-- Version Select Screen (shown first) -->
+    <div id="version-screen" class="version-screen active" aria-hidden="false">
+        <div class="version-panel">
+            <div class="version-title">█ SELECT BUILD VERSION █</div>
+            <div class="version-sub">Choose which scenario you are running: VA / VB / VC</div>
+            <div class="version-buttons">
+                <button class="version-btn" data-version="VA">Version A (VA)</button>
+                <button class="version-btn" data-version="VB">Version B (VB)</button>
+                <button class="version-btn" data-version="VC">Version C (VC)</button>
+            </div>
+            <div class="version-hint dim">After selection, you will be taken to the intro screen. Press SPACEBAR to begin.</div>
+        </div>
+    </div>
+
+    <!-- Home Screen (intro) -->
+    <div id="home-screen" style="display:none">
+        <img src="sos-logo.png" alt="SOS Logo">
+        <p class="start-prompt">Press SPACEBAR to begin exercise</p>
+    </div>
+
+    <!-- Intel Console Screen -->
+    <div id="intel-screen">
+        <div class="console-frame">
+            <div class="console-header">
+                <div class="console-title">█ SECURE INTEL TERMINAL █</div>
+                <div class="console-status">
+                    <div class="status-item">
+                        <div class="status-light"></div>
+                        <span>ENCRYPTED</span>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-light"></div>
+                        <span>SECURE CHANNEL</span>
+                    </div>
+                    <div class="datetime-display" id="datetime"></div>
+                </div>
+            </div>
+            <div class="console-body" id="console-body">
+                <div class="classified-stamp">CLASSIFIED</div>
+                
+                <!-- Section 1: Initial Drone Intel -->
+                <div class="intel-section" id="section-1">
+                    <div class="intel-header">▶ INTELLIGENCE REPORT - PRIOR ACTIVITY</div>
+                    <div class="intel-text" id="text-1"></div>
+                </div>
+
+                <!-- Section 2: Map Display Reference -->
+                <div class="intel-section" id="section-2">
+                    <div class="intel-header">▶ SURVEILLANCE DATA - DRONE FLIGHT PATH</div>
+                    <div class="intel-text" id="text-2"></div>
+                </div>
+
+                <!-- Section 3: Today's Events - BOLO -->
+                <div class="intel-section" id="section-3">
+                    <div class="intel-header">▶ CURRENT SITUATION - TODAY'S EVENTS</div>
+                    <div class="intel-text" id="text-3"></div>
+                </div>
+
+                <!-- Section 4: Suspect Status -->
+                <div class="intel-section" id="section-4">
+                    <div class="intel-header">▶ SUSPECT STATUS</div>
+                    <div class="intel-text" id="text-4"></div>
+                </div>
+
+                <!-- Section 5: Commander Authorization -->
+                <div class="intel-section" id="section-5">
+                    <div class="intel-header">▶ MISSION AUTHORIZATION</div>
+                    <div class="intel-text" id="text-5"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map Overlay -->
+        <div class="map-overlay" id="map-overlay"></div>
+        <div id="map-container">
+            <div class="map-wrapper">
+                <img src="flightpath-map.png" alt="Base Map - Drone Flight Path" class="map-image" id="map-image">
+                <div class="time-indicator">TIME: 0200 HRS</div>
+                <svg class="flight-path-svg" id="flight-path-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <!-- Flight path will be drawn here -->
+                    <!-- Trail glow effect (background) -->
+                    <path class="flight-path-trail" id="flight-trail" d=""/>
+                    <!-- Full path shown as dashed guide -->
+                    <path class="flight-path" id="flight-path" d=""/>
+                    <!-- Traveled path - drawn behind the drone -->
+                    <path class="flight-path-traveled" id="flight-path-traveled" d=""/>
+                    <!-- Start marker -->
+                    <circle class="path-marker start-marker" cx="0" cy="0" r="1" id="start-marker"/>
+                    <text class="marker-label start-label" x="0" y="0" id="start-label">START</text>
+                    <!-- End marker -->
+                    <circle class="path-marker end-marker" cx="0" cy="0" r="1" id="end-marker"/>
+                    <text class="marker-label end-label" x="0" y="0" id="end-label">EXIT</text>
+                    <!-- Animated drone marker - layered glow effect -->
+                    <circle class="drone-glow-outer" id="drone-glow-outer" cx="0" cy="0" r="1.5"/>
+                    <circle class="drone-marker" id="drone-marker" cx="0" cy="0" r="0.8"/>
+                    <circle class="drone-core" id="drone-core" cx="0" cy="0" r="0.25"/>
+                </svg>
+            </div>
+            <div class="map-label">Drone Flight Path - 3 Days Prior - Approx. 0200 Hours</div>
+            <div class="map-continue-prompt">[PRESS SPACEBAR TO CONTINUE]</div>
+        </div>
+    </div>
+
+    <!-- Cinematic Drone Animation -->
+    <div id="video-modal">
+        <div class="video-container">
+            <div class="video-header">
+                <div class="video-title">█ LIVE DRONE FEED █</div>
+                <div class="video-status">
+                    <div class="recording-indicator">
+                        <div class="recording-dot"></div>
+                        <span>REC</span>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-light"></div>
+                        <span>CONNECTED</span>
+                    </div>
+                </div>
+            </div>
+            <div class="cinematic-animation-wrapper" id="cinematic-wrapper">
+                <div class="cinematic-map-wrapper" id="cinematic-map-wrapper">
+                    <img src="a3.png" alt="Aerial View" class="cinematic-map" id="cinematic-map">
+                    <svg class="cinematic-svg" id="cinematic-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <!-- Animated drone image -->
+                        <image class="cinematic-drone" id="cinematic-drone" 
+                               href="drone.png" 
+                               x="-4" y="-2.5" 
+                               width="8" height="5"
+                               transform="translate(0,0)"
+                               opacity="0"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="video-overlay-info">DRONE-01 | ALT: 45ft | SPD: 12kts</div>
+            <div class="video-timestamp" id="video-timestamp">00:00:00</div>
+            <div class="video-footer">SECURE FEED - ENCRYPTION ACTIVE</div>
+        </div>
+    </div>
+
+    <!-- Angle Selection Screen -->
+    <div id="angle-selection-screen">
+        <div class="angle-selection-header">
+            <div class="angle-selection-title">█ DRONE RECONNAISSANCE - SELECT VIEWING ANGLE █</div>
+        </div>
+        <div class="angle-selection-body">
+            <div class="angle-map-section">
+                <div class="angle-map-container">
+                    <img src="newsimcity.png" alt="Container City Reconnaissance Map" id="angle-map-image">
+                    <svg class="zone-overlay-svg" id="zone-overlay-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <defs></defs>
+                        
+                        <!-- Environmental effects (rendered first, behind zones) -->
+                        <g id="environmental-effects-group"></g>
+                        
+        <!-- Zone C -->
+        <ellipse class="drone-zone zone-c" id="map-zone-c" cx="11.5" cy="78.5" rx="6.1" ry="6.6"/>
+        <text class="zone-label-text" x="11.5" y="78.5">C</text>
+                        
+        <!-- Zone B -->
+        <ellipse class="drone-zone zone-b" id="map-zone-b" cx="40.7" cy="11.2" rx="5.3" ry="6.2"/>
+        <text class="zone-label-text" x="40.7" y="11.2">B</text>
+                        
+        <!-- Zone A -->
+        <ellipse class="drone-zone zone-a" id="map-zone-a" cx="86.1" cy="20.1" rx="5.3" ry="6.0"/>
+        <text class="zone-label-text" x="86.1" y="20.1">A</text>
+                    </svg>
+                </div>
+            </div>
+            <div class="angle-console-section">
+                <div class="console-prompt-header">▶ DRONE CONTROL INTERFACE</div>
+                <div class="angle-console-body">
+                    <div class="console-prompt-text" id="angle-prompt-text"></div>
+                    <div style="margin: 10px 0 14px; color: #888; font-size: 0.9rem;">
+                        Click the buttons below for more information.
+                    </div>
+                    <div class="angle-options" id="angle-options">
+                        <button class="angle-option" data-angle="A">
+                            <span class="option-number">[A]</span> DRONE POSITION A
+                        </button>
+                        <button class="angle-option" data-angle="B">
+                            <span class="option-number">[B]</span> DRONE POSITION B
+                        </button>
+                        <button class="angle-option" data-angle="C">
+                            <span class="option-number">[C]</span> DRONE POSITION C
+                        </button>
+                    </div>
+                    <div class="position-details" id="position-details"></div>
+                </div>
+                <div class="angle-input-section">
+                    <div class="angle-input-label">Or enter selection manually:</div>
+                    <div class="angle-input-prompt">
+                        <span>SELECT POSITION &gt;</span>
+                        <input type="text" id="angle-input" maxlength="1" autocomplete="off">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Zone Video Feed Modal -->
+    <div id="zone-video-modal">
+        <div class="video-container">
+            <div class="video-header">
+                <div class="video-title">█ ZONE RECONNAISSANCE FEED █</div>
+                <div class="video-status">
+                    <div class="recording-indicator">
+                        <div class="recording-dot"></div>
+                        <span>REC</span>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-light"></div>
+                        <span>CONNECTED</span>
+                    </div>
+                </div>
+            </div>
+            <video id="zone-drone-video" class="video-feed" playsinline>
+                <!-- Default VA/A; overwritten when opening the zone modal for the chosen position -->
+                <source id="zone-drone-video-source" src="VID/POSA/VAposa.mp4" type="video/mp4">
+                Your browser does not support video playback.
+            </video>
+            <div class="video-magnifier" id="zone-video-magnifier" aria-hidden="true">
+                <canvas id="zone-video-magnifier-canvas"></canvas>
+            </div>
+            <div class="video-overlay-info" id="zone-video-info">POSITION: -- | ALT: 45ft | SPD: 12kts</div>
+            <div class="video-timestamp" id="zone-video-timestamp">00:00:00</div>
+            <div class="video-footer">ZONE SURVEILLANCE - ENCRYPTION ACTIVE</div>
+        </div>
+        
+        <!-- Continue Drone Usage Prompt -->
+        <div id="continue-drone-prompt" class="drone-continue-prompt">
+            <div class="prompt-content">
+                <div class="prompt-header">
+                    <div class="prompt-icon">⚠</div>
+                    <div class="prompt-title">DRONE USAGE CONFIRMATION</div>
+                </div>
+                <div class="prompt-message">
+                    Do you wish to continue drone usage?
+                </div>
+                <div class="prompt-buttons">
+                    <button class="prompt-btn btn-yes" id="continue-yes-btn">
+                        <span class="btn-label">[Y]</span> YES - CONTINUE
+                    </button>
+                    <button class="prompt-btn btn-no" id="continue-no-btn">
+                        <span class="btn-label">[N]</span> NO - TERMINATE
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Test processing terminal (shown after student submits answers) -->
+    <div id="processing-modal" aria-hidden="true">
+        <div class="processing-terminal" role="dialog" aria-label="Processing test">
+            <div class="processing-header">
+                <div class="processing-title">█ SECURE SCORING TERMINAL █</div>
+                <div class="console-status">
+                    <div class="status-item">
+                        <div class="status-light"></div>
+                        <span>ENCRYPTED</span>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-light"></div>
+                        <span>SECURE CHANNEL</span>
+                    </div>
+                </div>
+            </div>
+            <div class="processing-body" id="processing-body"></div>
+        </div>
+    </div>
+
+    <!-- Narration audio (mp3 1-7) -->
+    <audio id="narration-audio" preload="auto"></audio>
+
+    <!-- Test Processing Overlay (shown after scoring submission) -->
+    <div id="test-processing-modal" aria-hidden="true">
+        <div class="test-terminal" role="dialog" aria-modal="true" aria-label="Processing test results">
+            <div class="test-terminal-header">
+                <div>█ SECURE SCORING TERMINAL █</div>
+                <div class="dim">ENCRYPTED</div>
+            </div>
+            <div class="test-terminal-body" id="test-terminal-body"></div>
+        </div>
+    </div>
+
+    <!-- Terminal-style Test (shown after video ends or feed is terminated) -->
+    <div id="student-test-modal" aria-hidden="true">
+        <div class="test-terminal" role="dialog" aria-modal="true" aria-label="Student test terminal">
+            <div class="test-terminal-header">
+                <div>█ STUDENT TEST TERMINAL █</div>
+                <div class="dim">RESPONDER MODE</div>
+            </div>
+            <div class="test-terminal-body student-test-body-wrap" id="student-test-body">
+                <div id="student-test-history" class="student-test-history" aria-live="polite"></div>
+                <div id="student-test-prompt" class="student-test-prompt"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Embedded scoring keys (avoids fetch/file:// limitations). One installer = one build. -->
+    <script type="application/json" id="scoring-key-VA">
+{
+  "schema": "sos-ftx-scoring-key@5",
+  "version": "VA",
+  "required": {
+    "q1_angle": true,
+    "q2_suspects": true,
+    "q5_building": [
+      true,
+      true
+    ],
+    "q5_weapon": [
+      true,
+      true
+    ],
+    "q7_canDetain": true
+  },
+  "answers": {
+    "q1_angle": "A",
+    "q2_suspects": 2,
+    "q5_suspects": [
+      {
+        "building": "A",
+        "weaponSeen": "Y",
+        "weaponTypeLastSeen": "pistol"
+      },
+      {
+        "building": "G",
+        "weaponSeen": "N",
+        "weaponTypeLastSeen": "none"
+      }
+    ],
+    "q3_weaponSeen": "Y",
+    "q4_weaponType": "pistol",
+    "q5_building": "A",
+    "q6_nextBuilding": "G",
+    "q7_canDetain": [
+      "A"
+    ]
+  },
+  "buildings": {
+    "A": { "x": 19.55, "y": 42.87 },
+    "B": { "x": 30.45, "y": 33.91 },
+    "C": { "x": 40.22, "y": 26.17 },
+    "D": { "x": 50.16, "y": 18.84 },
+    "E": { "x": 18.75, "y": 61.2 },
+    "F": { "x": 27.4, "y": 56.52 },
+    "G": { "x": 37.66, "y": 48.98 },
+    "H": { "x": 46.79, "y": 39 },
+    "I": { "x": 54.97, "y": 33.3 },
+    "J": { "x": 63.3, "y": 26.58 },
+    "K": { "x": 34.13, "y": 84.01 },
+    "L": { "x": 47.6, "y": 61.61 },
+    "M": { "x": 57.21, "y": 55.3 },
+    "N": { "x": 67.15, "y": 49.19 },
+    "O": { "x": 59.62, "y": 64.46 },
+    "P": { "x": 71.96, "y": 62.32 },
+    "Q": { "x": 81.09, "y": 55.6 },
+    "R": { "x": 86.22, "y": 51.12 },
+    "S": { "x": 66.51, "y": 6.01 },
+    "T": { "x": 69.55, "y": 12.32 }
+  }
+}
+    </script>
+
+    <script type="application/json" id="scoring-bundle-VA-A">
+{
+  "schema": "sos-ftx-scoring-bundle@1",
+  "version": "VA",
+  "angle": "A",
+  "hasPart2": true,
+  "parts": {
+    "1": {
+      "schema": "sos-ftx-scoring-key@5",
+      "version": "VA",
+      "angle": "A",
+      "required": {
+        "q1_angle": true,
+        "q2_suspects": true,
+        "q5_building": [true, true],
+        "q5_weaponSeen": [false, false],
+        "q5_weaponType": [false, false],
+        "q5_weapon": [false, false],
+        "q7_canDetain": false
+      },
+      "answers": {
+        "q1_angle": "A",
+        "q2_suspects": 2,
+        "q5_suspects": [
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null }
+        ],
+        "q3_weaponSeen": null,
+        "q4_weaponType": null,
+        "q5_building": null,
+        "q6_nextBuilding": null,
+        "q7_canDetain": ["C"]
+      }
+    },
+    "2": null
+  },
+  "buildings": {
+    "A": { "x": 19.55, "y": 42.87 },
+    "B": { "x": 30.45, "y": 33.91 },
+    "C": { "x": 40.22, "y": 26.17 },
+    "D": { "x": 50.16, "y": 18.84 },
+    "E": { "x": 18.75, "y": 61.2 },
+    "F": { "x": 27.4, "y": 56.52 },
+    "G": { "x": 37.66, "y": 48.98 },
+    "H": { "x": 46.79, "y": 39 },
+    "I": { "x": 54.97, "y": 33.3 },
+    "J": { "x": 63.3, "y": 26.58 },
+    "K": { "x": 34.13, "y": 84.01 },
+    "L": { "x": 47.6, "y": 61.61 },
+    "M": { "x": 57.21, "y": 55.3 },
+    "N": { "x": 67.15, "y": 49.19 },
+    "O": { "x": 59.62, "y": 64.46 },
+    "P": { "x": 71.96, "y": 62.32 },
+    "Q": { "x": 81.09, "y": 55.6 },
+    "R": { "x": 86.22, "y": 51.12 },
+    "S": { "x": 66.51, "y": 6.01 },
+    "T": { "x": 69.55, "y": 12.32 }
+  }
+}
+    </script>
+
+    <script type="application/json" id="scoring-bundle-VA-B">
+{
+  "schema": "sos-ftx-scoring-bundle@1",
+  "version": "VA",
+  "angle": "B",
+  "hasPart2": true,
+  "parts": {
+    "1": {
+      "schema": "sos-ftx-scoring-key@5",
+      "version": "VA",
+      "angle": "B",
+      "required": {
+        "q1_angle": true,
+        "q2_suspects": false,
+        "q5_building": [true, false],
+        "q5_weaponSeen": [false, false],
+        "q5_weaponType": [false, false],
+        "q5_weapon": [false, false],
+        "q7_canDetain": false
+      },
+      "answers": {
+        "q1_angle": "B",
+        "q2_suspects": 2,
+        "q5_suspects": [
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null }
+        ],
+        "q3_weaponSeen": null,
+        "q4_weaponType": null,
+        "q5_building": null,
+        "q6_nextBuilding": null,
+        "q7_canDetain": ["C"]
+      }
+    },
+    "2": {
+      "schema": "sos-ftx-scoring-key@5",
+      "version": "VA",
+      "angle": "B",
+      "required": {
+        "q1_angle": true,
+        "q2_suspects": false,
+        "q5_building": [false, false],
+        "q5_weaponSeen": [false, false],
+        "q5_weaponType": [false, false],
+        "q5_weapon": [false, false],
+        "q7_canDetain": false
+      },
+      "answers": {
+        "q1_angle": "B",
+        "q2_suspects": 2,
+        "q5_suspects": [
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null }
+        ],
+        "q3_weaponSeen": null,
+        "q4_weaponType": null,
+        "q5_building": null,
+        "q6_nextBuilding": null,
+        "q7_canDetain": ["C"]
+      }
+    }
+  },
+  "buildings": {
+    "A": { "x": 19.55, "y": 42.87 },
+    "B": { "x": 30.45, "y": 33.91 },
+    "C": { "x": 40.22, "y": 26.17 },
+    "D": { "x": 50.16, "y": 18.84 },
+    "E": { "x": 18.75, "y": 61.2 },
+    "F": { "x": 27.4, "y": 56.52 },
+    "G": { "x": 37.66, "y": 48.98 },
+    "H": { "x": 46.79, "y": 39 },
+    "I": { "x": 54.97, "y": 33.3 },
+    "J": { "x": 63.3, "y": 26.58 },
+    "K": { "x": 34.13, "y": 84.01 },
+    "L": { "x": 47.6, "y": 61.61 },
+    "M": { "x": 57.21, "y": 55.3 },
+    "N": { "x": 67.15, "y": 49.19 },
+    "O": { "x": 59.62, "y": 64.46 },
+    "P": { "x": 71.96, "y": 62.32 },
+    "Q": { "x": 81.09, "y": 55.6 },
+    "R": { "x": 86.22, "y": 51.12 },
+    "S": { "x": 66.51, "y": 6.01 },
+    "T": { "x": 69.55, "y": 12.32 }
+  }
+}
+    </script>
+
+    <script type="application/json" id="scoring-bundle-VA-C">
+{
+  "schema": "sos-ftx-scoring-bundle@1",
+  "version": "VA",
+  "angle": "C",
+  "hasPart2": true,
+  "parts": {
+    "1": {
+      "schema": "sos-ftx-scoring-key@5",
+      "version": "VA",
+      "angle": "C",
+      "required": {
+        "q1_angle": true,
+        "q2_suspects": false,
+        "q5_building": [true, false],
+        "q5_weaponSeen": [false, false],
+        "q5_weaponType": [false, false],
+        "q5_weapon": [false, false],
+        "q7_canDetain": false
+      },
+      "answers": {
+        "q1_angle": "C",
+        "q2_suspects": 2,
+        "q5_suspects": [
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null }
+        ],
+        "q3_weaponSeen": null,
+        "q4_weaponType": null,
+        "q5_building": null,
+        "q6_nextBuilding": null,
+        "q7_canDetain": ["C"]
+      }
+    },
+    "2": {
+      "schema": "sos-ftx-scoring-key@5",
+      "version": "VA",
+      "angle": "C",
+      "required": {
+        "q1_angle": true,
+        "q2_suspects": false,
+        "q5_building": [true, false],
+        "q5_weaponSeen": [false, false],
+        "q5_weaponType": [false, false],
+        "q5_weapon": [false, false],
+        "q7_canDetain": false
+      },
+      "answers": {
+        "q1_angle": "C",
+        "q2_suspects": 2,
+        "q5_suspects": [
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null }
+        ],
+        "q3_weaponSeen": null,
+        "q4_weaponType": null,
+        "q5_building": null,
+        "q6_nextBuilding": null,
+        "q7_canDetain": ["C"]
+      }
+    }
+  },
+  "buildings": {
+    "A": { "x": 19.55, "y": 42.87 },
+    "B": { "x": 30.45, "y": 33.91 },
+    "C": { "x": 40.22, "y": 26.17 },
+    "D": { "x": 50.16, "y": 18.84 },
+    "E": { "x": 18.75, "y": 61.2 },
+    "F": { "x": 27.4, "y": 56.52 },
+    "G": { "x": 37.66, "y": 48.98 },
+    "H": { "x": 46.79, "y": 39 },
+    "I": { "x": 54.97, "y": 33.3 },
+    "J": { "x": 63.3, "y": 26.58 },
+    "K": { "x": 34.13, "y": 84.01 },
+    "L": { "x": 47.6, "y": 61.61 },
+    "M": { "x": 57.21, "y": 55.3 },
+    "N": { "x": 67.15, "y": 49.19 },
+    "O": { "x": 59.62, "y": 64.46 },
+    "P": { "x": 71.96, "y": 62.32 },
+    "Q": { "x": 81.09, "y": 55.6 },
+    "R": { "x": 86.22, "y": 51.12 },
+    "S": { "x": 66.51, "y": 6.01 },
+    "T": { "x": 69.55, "y": 12.32 }
+  }
+}
+    </script>
+
+    <!-- Embedded scoring bundles (per version+angle, includes Part 1/Part 2) -->
+    <script type="application/json" id="scoring-bundle-VB-A">
+{
+  "schema": "sos-ftx-scoring-bundle@1",
+  "version": "VB",
+  "angle": "A",
+  "hasPart2": true,
+  "parts": {
+    "1": {
+      "schema": "sos-ftx-scoring-key@5",
+      "version": "VB",
+      "angle": "A",
+      "required": {
+        "q1_angle": true,
+        "q2_suspects": false,
+        "q5_building": [false, true, false],
+        "q5_weapon": [false, false, false],
+        "q7_canDetain": false
+      },
+      "answers": {
+        "q1_angle": "A",
+        "q2_suspects": 3,
+        "q5_suspects": [
+          { "building": null, "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": "L", "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "weaponSeen": null, "weaponTypeLastSeen": null }
+        ],
+        "q3_weaponSeen": null,
+        "q4_weaponType": null,
+        "q5_building": null,
+        "q6_nextBuilding": "L",
+        "q7_canDetain": ["C"]
+      }
+    },
+    "2": {
+      "schema": "sos-ftx-scoring-key@5",
+      "version": "VB",
+      "angle": "A",
+      "required": {
+        "q1_angle": true,
+        "q2_suspects": true,
+        "q5_building": [true, true, false],
+        "q5_weapon": [false, false, false],
+        "q7_canDetain": false
+      },
+      "answers": {
+        "q1_angle": "A",
+        "q2_suspects": 3,
+        "q5_suspects": [
+          { "building": "R", "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": "L", "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": "G", "weaponSeen": null, "weaponTypeLastSeen": null }
+        ],
+        "q3_weaponSeen": null,
+        "q4_weaponType": null,
+        "q5_building": "R",
+        "q6_nextBuilding": "L",
+        "q7_canDetain": ["C"]
+      }
+    }
+  },
+  "buildings": {
+    "A": { "x": 19.55, "y": 42.87 },
+    "B": { "x": 30.45, "y": 33.91 },
+    "C": { "x": 40.22, "y": 26.17 },
+    "D": { "x": 50.16, "y": 18.84 },
+    "E": { "x": 18.75, "y": 61.2 },
+    "F": { "x": 27.4, "y": 56.52 },
+    "G": { "x": 37.66, "y": 48.98 },
+    "H": { "x": 46.79, "y": 39 },
+    "I": { "x": 54.97, "y": 33.3 },
+    "J": { "x": 63.3, "y": 26.58 },
+    "K": { "x": 34.13, "y": 84.01 },
+    "L": { "x": 47.6, "y": 61.61 },
+    "M": { "x": 57.21, "y": 55.3 },
+    "N": { "x": 67.15, "y": 49.19 },
+    "O": { "x": 59.62, "y": 64.46 },
+    "P": { "x": 71.96, "y": 62.32 },
+    "Q": { "x": 81.09, "y": 55.6 },
+    "R": { "x": 86.22, "y": 51.12 },
+    "S": { "x": 66.51, "y": 6.01 },
+    "T": { "x": 69.55, "y": 12.32 }
+  }
+}
+    </script>
+    <script type="application/json" id="scoring-bundle-VB-B">
+{
+  "schema": "sos-ftx-scoring-bundle@1",
+  "version": "VB",
+  "angle": "B",
+  "hasPart2": true,
+  "parts": {
+    "1": {
+      "schema": "sos-ftx-scoring-key@5",
+      "version": "VB",
+      "angle": "B",
+      "required": {
+        "q1_angle": true,
+        "q2_suspects": true,
+        "q5_building": [true, false, true],
+        "q5_weapon": [false, false, false],
+        "q7_canDetain": false
+      },
+      "answers": {
+        "q1_angle": "B",
+        "q2_suspects": 3,
+        "q5_suspects": [
+          { "building": "N", "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": "L", "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": "G", "weaponSeen": null, "weaponTypeLastSeen": null }
+        ],
+        "q3_weaponSeen": null,
+        "q4_weaponType": null,
+        "q5_building": "N",
+        "q6_nextBuilding": "L",
+        "q7_canDetain": ["C"]
+      }
+    },
+    "2": {
+      "schema": "sos-ftx-scoring-key@5",
+      "version": "VB",
+      "angle": "B",
+      "required": {
+        "q1_angle": true,
+        "q2_suspects": true,
+        "q5_building": [true, true, true],
+        "q5_weapon": [false, false, false],
+        "q7_canDetain": false
+      },
+      "answers": {
+        "q1_angle": "B",
+        "q2_suspects": 3,
+        "q5_suspects": [
+          { "building": "N", "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": "K", "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": "G", "weaponSeen": null, "weaponTypeLastSeen": null }
+        ],
+        "q3_weaponSeen": null,
+        "q4_weaponType": null,
+        "q5_building": "N",
+        "q6_nextBuilding": "K",
+        "q7_canDetain": ["C"]
+      }
+    }
+  },
+  "buildings": {
+    "A": { "x": 19.55, "y": 42.87 },
+    "B": { "x": 30.45, "y": 33.91 },
+    "C": { "x": 40.22, "y": 26.17 },
+    "D": { "x": 50.16, "y": 18.84 },
+    "E": { "x": 18.75, "y": 61.2 },
+    "F": { "x": 27.4, "y": 56.52 },
+    "G": { "x": 37.66, "y": 48.98 },
+    "H": { "x": 46.79, "y": 39 },
+    "I": { "x": 54.97, "y": 33.3 },
+    "J": { "x": 63.3, "y": 26.58 },
+    "K": { "x": 34.13, "y": 84.01 },
+    "L": { "x": 47.6, "y": 61.61 },
+    "M": { "x": 57.21, "y": 55.3 },
+    "N": { "x": 67.15, "y": 49.19 },
+    "O": { "x": 59.62, "y": 64.46 },
+    "P": { "x": 71.96, "y": 62.32 },
+    "Q": { "x": 81.09, "y": 55.6 },
+    "R": { "x": 86.22, "y": 51.12 },
+    "S": { "x": 66.51, "y": 6.01 },
+    "T": { "x": 69.55, "y": 12.32 }
+  }
+}
+    </script>
+    <script type="application/json" id="scoring-bundle-VB-C">
+{
+  "schema": "sos-ftx-scoring-bundle@1",
+  "version": "VB",
+  "angle": "C",
+  "hasPart2": true,
+  "parts": {
+    "1": {
+      "schema": "sos-ftx-scoring-key@5",
+      "version": "VB",
+      "angle": "C",
+      "required": {
+        "q1_angle": true,
+        "q2_suspects": false,
+        "q5_building": [true, true, false],
+        "q5_weapon": [false, false, false],
+        "q7_canDetain": false
+      },
+      "answers": {
+        "q1_angle": "C",
+        "q2_suspects": 3,
+        "q5_suspects": [
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null }
+        ],
+        "q3_weaponSeen": null,
+        "q4_weaponType": null,
+        "q5_building": null,
+        "q6_nextBuilding": null,
+        "q7_canDetain": ["C"]
+      }
+    },
+    "2": {
+      "schema": "sos-ftx-scoring-key@5",
+      "version": "VB",
+      "angle": "C",
+      "required": {
+        "q1_angle": true,
+        "q2_suspects": true,
+        "q5_building": [true, true, true],
+        "q5_weapon": [false, false, false],
+        "q7_canDetain": false
+      },
+      "answers": {
+        "q1_angle": "C",
+        "q2_suspects": 3,
+        "q5_suspects": [
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null }
+        ],
+        "q3_weaponSeen": null,
+        "q4_weaponType": null,
+        "q5_building": null,
+        "q6_nextBuilding": null,
+        "q7_canDetain": ["C"]
+      }
+    }
+  },
+  "buildings": {
+    "A": { "x": 19.55, "y": 42.87 },
+    "B": { "x": 30.45, "y": 33.91 },
+    "C": { "x": 40.22, "y": 26.17 },
+    "D": { "x": 50.16, "y": 18.84 },
+    "E": { "x": 18.75, "y": 61.2 },
+    "F": { "x": 27.4, "y": 56.52 },
+    "G": { "x": 37.66, "y": 48.98 },
+    "H": { "x": 46.79, "y": 39 },
+    "I": { "x": 54.97, "y": 33.3 },
+    "J": { "x": 63.3, "y": 26.58 },
+    "K": { "x": 34.13, "y": 84.01 },
+    "L": { "x": 47.6, "y": 61.61 },
+    "M": { "x": 57.21, "y": 55.3 },
+    "N": { "x": 67.15, "y": 49.19 },
+    "O": { "x": 59.62, "y": 64.46 },
+    "P": { "x": 71.96, "y": 62.32 },
+    "Q": { "x": 81.09, "y": 55.6 },
+    "R": { "x": 86.22, "y": 51.12 },
+    "S": { "x": 66.51, "y": 6.01 },
+    "T": { "x": 69.55, "y": 12.32 }
+  }
+}
+    </script>
+
+    <script type="application/json" id="scoring-bundle-VC-A">
+{
+  "schema": "sos-ftx-scoring-bundle@1",
+  "version": "VC",
+  "angle": "A",
+  "hasPart2": true,
+  "parts": {
+    "1": {
+      "schema": "sos-ftx-scoring-key@5",
+      "version": "VC",
+      "angle": "A",
+      "required": {
+        "q1_angle": true,
+        "q2_suspects": false,
+        "q5_building": [true, false, true],
+        "q5_weapon": [false, false, false],
+        "q7_canDetain": false
+      },
+      "answers": {
+        "q1_angle": "A",
+        "q2_suspects": 3,
+        "q5_suspects": [
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null }
+        ],
+        "q3_weaponSeen": null,
+        "q4_weaponType": null,
+        "q5_building": null,
+        "q6_nextBuilding": null,
+        "q7_canDetain": ["C"]
+      }
+    },
+    "2": {
+      "schema": "sos-ftx-scoring-key@5",
+      "version": "VC",
+      "angle": "A",
+      "required": {
+        "q1_angle": true,
+        "q2_suspects": true,
+        "q5_building": [true, false, true],
+        "q5_weapon": [false, true, false],
+        "q7_canDetain": false
+      },
+      "answers": {
+        "q1_angle": "A",
+        "q2_suspects": 3,
+        "q5_suspects": [
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null }
+        ],
+        "q3_weaponSeen": null,
+        "q4_weaponType": null,
+        "q5_building": null,
+        "q6_nextBuilding": null,
+        "q7_canDetain": ["C"]
+      }
+    }
+  },
+  "buildings": {
+    "A": { "x": 19.55, "y": 42.87 },
+    "B": { "x": 30.45, "y": 33.91 },
+    "C": { "x": 40.22, "y": 26.17 },
+    "D": { "x": 50.16, "y": 18.84 },
+    "E": { "x": 18.75, "y": 61.2 },
+    "F": { "x": 27.4, "y": 56.52 },
+    "G": { "x": 37.66, "y": 48.98 },
+    "H": { "x": 46.79, "y": 39 },
+    "I": { "x": 54.97, "y": 33.3 },
+    "J": { "x": 63.3, "y": 26.58 },
+    "K": { "x": 34.13, "y": 84.01 },
+    "L": { "x": 47.6, "y": 61.61 },
+    "M": { "x": 57.21, "y": 55.3 },
+    "N": { "x": 67.15, "y": 49.19 },
+    "O": { "x": 59.62, "y": 64.46 },
+    "P": { "x": 71.96, "y": 62.32 },
+    "Q": { "x": 81.09, "y": 55.6 },
+    "R": { "x": 86.22, "y": 51.12 },
+    "S": { "x": 66.51, "y": 6.01 },
+    "T": { "x": 69.55, "y": 12.32 }
+  }
+}
+    </script>
+    <script type="application/json" id="scoring-bundle-VC-B">
+{
+  "schema": "sos-ftx-scoring-bundle@1",
+  "version": "VC",
+  "angle": "B",
+  "hasPart2": true,
+  "parts": {
+    "1": {
+      "schema": "sos-ftx-scoring-key@5",
+      "version": "VC",
+      "angle": "B",
+      "required": {
+        "q1_angle": true,
+        "q2_suspects": true,
+        "q5_building": [true, true, true],
+        "q5_weapon": [false, false, false],
+        "q7_canDetain": false
+      },
+      "answers": {
+        "q1_angle": "B",
+        "q2_suspects": 3,
+        "q5_suspects": [
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null }
+        ],
+        "q3_weaponSeen": null,
+        "q4_weaponType": null,
+        "q5_building": null,
+        "q6_nextBuilding": null,
+        "q7_canDetain": ["C"]
+      }
+    },
+    "2": {
+      "schema": "sos-ftx-scoring-key@5",
+      "version": "VC",
+      "angle": "B",
+      "required": {
+        "q1_angle": true,
+        "q2_suspects": true,
+        "q5_building": [true, false, true],
+        "q5_weapon": [false, false, false],
+        "q7_canDetain": false
+      },
+      "answers": {
+        "q1_angle": "B",
+        "q2_suspects": 3,
+        "q5_suspects": [
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null }
+        ],
+        "q3_weaponSeen": null,
+        "q4_weaponType": null,
+        "q5_building": null,
+        "q6_nextBuilding": null,
+        "q7_canDetain": ["C"]
+      }
+    }
+  },
+  "buildings": {
+    "A": { "x": 19.55, "y": 42.87 },
+    "B": { "x": 30.45, "y": 33.91 },
+    "C": { "x": 40.22, "y": 26.17 },
+    "D": { "x": 50.16, "y": 18.84 },
+    "E": { "x": 18.75, "y": 61.2 },
+    "F": { "x": 27.4, "y": 56.52 },
+    "G": { "x": 37.66, "y": 48.98 },
+    "H": { "x": 46.79, "y": 39 },
+    "I": { "x": 54.97, "y": 33.3 },
+    "J": { "x": 63.3, "y": 26.58 },
+    "K": { "x": 34.13, "y": 84.01 },
+    "L": { "x": 47.6, "y": 61.61 },
+    "M": { "x": 57.21, "y": 55.3 },
+    "N": { "x": 67.15, "y": 49.19 },
+    "O": { "x": 59.62, "y": 64.46 },
+    "P": { "x": 71.96, "y": 62.32 },
+    "Q": { "x": 81.09, "y": 55.6 },
+    "R": { "x": 86.22, "y": 51.12 },
+    "S": { "x": 66.51, "y": 6.01 },
+    "T": { "x": 69.55, "y": 12.32 }
+  }
+}
+    </script>
+    <script type="application/json" id="scoring-bundle-VC-C">
+{
+  "schema": "sos-ftx-scoring-bundle@1",
+  "version": "VC",
+  "angle": "C",
+  "hasPart2": true,
+  "parts": {
+    "1": {
+      "schema": "sos-ftx-scoring-key@5",
+      "version": "VC",
+      "angle": "C",
+      "required": {
+        "q1_angle": true,
+        "q2_suspects": true,
+        "q5_building": [true, true, true],
+        "q5_weapon": [false, false, true],
+        "q7_canDetain": false
+      },
+      "answers": {
+        "q1_angle": "C",
+        "q2_suspects": 3,
+        "q5_suspects": [
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": "Y", "weaponTypeLastSeen": "rifle" }
+        ],
+        "q3_weaponSeen": null,
+        "q4_weaponType": null,
+        "q5_building": null,
+        "q6_nextBuilding": null,
+        "q7_canDetain": ["C"]
+      }
+    },
+    "2": {
+      "schema": "sos-ftx-scoring-key@5",
+      "version": "VC",
+      "angle": "C",
+      "required": {
+        "q1_angle": true,
+        "q2_suspects": true,
+        "q5_building": [true, true, true],
+        "q5_weapon": [true, false, true],
+        "q7_canDetain": true
+      },
+      "answers": {
+        "q1_angle": "C",
+        "q2_suspects": 3,
+        "q5_suspects": [
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": "Y", "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": "Y", "weaponTypeLastSeen": "rifle" }
+        ],
+        "q3_weaponSeen": null,
+        "q4_weaponType": null,
+        "q5_building": null,
+        "q6_nextBuilding": null,
+        "q7_canDetain": ["C"]
+      }
+    }
+  },
+  "buildings": {
+    "A": { "x": 19.55, "y": 42.87 },
+    "B": { "x": 30.45, "y": 33.91 },
+    "C": { "x": 40.22, "y": 26.17 },
+    "D": { "x": 50.16, "y": 18.84 },
+    "E": { "x": 18.75, "y": 61.2 },
+    "F": { "x": 27.4, "y": 56.52 },
+    "G": { "x": 37.66, "y": 48.98 },
+    "H": { "x": 46.79, "y": 39 },
+    "I": { "x": 54.97, "y": 33.3 },
+    "J": { "x": 63.3, "y": 26.58 },
+    "K": { "x": 34.13, "y": 84.01 },
+    "L": { "x": 47.6, "y": 61.61 },
+    "M": { "x": 57.21, "y": 55.3 },
+    "N": { "x": 67.15, "y": 49.19 },
+    "O": { "x": 59.62, "y": 64.46 },
+    "P": { "x": 71.96, "y": 62.32 },
+    "Q": { "x": 81.09, "y": 55.6 },
+    "R": { "x": 86.22, "y": 51.12 },
+    "S": { "x": 66.51, "y": 6.01 },
+    "T": { "x": 69.55, "y": 12.32 }
+  }
+}
+    </script>
+
+
+    <script>
+        // Application State
+        const state = {
+            currentScreen: 'version',
+            currentSection: 0,
+            isTyping: false,
+            canContinue: false,
+            showingMap: false,
+            showingVideo: false,
+            selectedAngle: null,
+            positionLocked: false,  // Whether drone position selection is locked
+            skipRequested: false,  // Secret admin fast-forward
+            zoneVideoPromptShown: false,  // Track if continue prompt has been shown
+            testPart: 1 // 1 | 2 (Part 2 is entered only if user continues drone usage)
+        };
+
+        // Intel Content
+        const intelContent = [
+            {
+                section: 1,
+                text: `PRIORITY: ROUTINE
+DATE: [3 DAYS PRIOR]
+TIME: APPROXIMATELY 0200 HOURS
+
+An unidentified drone was detected flying over the FOS/Beddown Area.
+
+The drone conducted surveillance of the area for approximately 3 minutes before departing to the northeast.
+
+Intelligence assets have been tracking this activity. Drone origin and operator remain UNKNOWN at this time.
+
+Displaying recorded flight path...`
+            },
+            {
+                section: 2,
+                text: `[LOADING SURVEILLANCE DATA...]
+
+Flight path imagery has been retrieved from base security systems.
+
+Review the attached map for drone trajectory analysis.
+
+NFTR - Nothing Further To Report regarding prior drone activity.`,
+                showMap: true
+            },
+            {
+                section: 3,
+                text: `*** PRIORITY ALERT - BOLO ISSUED ***
+
+A. Be On The Lookout (BOLO) has been released for a male suspect.
+
+INCIDENT: Suspect was reported screaming near Officer Training School approximately 45 minutes ago.
+
+LAST KNOWN LOCATION: Suspect was last seen running into Container City.
+
+*** EXPLOSION REPORTED ***
+
+An explosion has been reported in or near Container City. Emergency response teams are standing by.
+
+NO INJURIES HAVE BEEN REPORTED AT THIS TIME.`
+            },
+            {
+                section: 4,
+                text: `SUSPECT STATUS UPDATE:
+
+• Suspect is believed to still be located within Container City
+• Exact building location is UNKNOWN
+• It is UNKNOWN if suspect is working alone
+• It is UNKNOWN if suspect is still armed
+
+*** PRIORITY DIRECTIVE ***
+
+Suspect should be apprehended ALIVE for questioning.
+
+Intelligence value is considered HIGH. Lethal force is NOT authorized unless absolutely necessary for self-defense.`
+            },
+            {
+                section: 5,
+                text: `*** COMMANDER AUTHORIZATION RECEIVED ***
+
+The Commander has authorized Security Forces use of a reconnaissance drone over Container City.
+
+MISSION OBJECTIVES:
+
+1. Determine the EXACT LOCATION of the suspect within Container City
+
+2. Confirm if suspect is acting ALONE or has accomplices - if not alone, determine total number of individuals
+
+3. Assess if the suspect is currently ARMED
+
+4. Evaluate whether suspect can be safely DETAINED
+
+Your team has been selected for this mission. Stand by for further instructions.
+
+*** END INTEL BRIEFING ***`
+            }
+        ];
+
+        // DOM Elements
+        const homeScreen = document.getElementById('home-screen');
+        const versionScreen = document.getElementById('version-screen');
+        const versionButtons = document.querySelectorAll('.version-btn');
+        const intelScreen = document.getElementById('intel-screen');
+        const mapContainer = document.getElementById('map-container');
+        const mapOverlay = document.getElementById('map-overlay');
+        const datetimeDisplay = document.getElementById('datetime');
+        const videoModal = document.getElementById('video-modal');
+        const cinematicWrapper = document.getElementById('cinematic-wrapper');
+        const cinematicMapWrapper = document.getElementById('cinematic-map-wrapper');
+        const cinematicMap = document.getElementById('cinematic-map');
+        const cinematicDrone = document.getElementById('cinematic-drone');
+        const videoTimestamp = document.getElementById('video-timestamp');
+        const angleSelectionScreen = document.getElementById('angle-selection-screen');
+        const anglePromptText = document.getElementById('angle-prompt-text');
+        const angleInput = document.getElementById('angle-input');
+        const angleOptions = document.querySelectorAll('.angle-option');
+        const zoneVideoModal = document.getElementById('zone-video-modal');
+        const zoneDroneVideo = document.getElementById('zone-drone-video');
+        const zoneVideoTimestamp = document.getElementById('zone-video-timestamp');
+        const zoneVideoInfo = document.getElementById('zone-video-info');
+        const zoneVideoMagnifier = document.getElementById('zone-video-magnifier');
+        const zoneVideoMagnifierCanvas = document.getElementById('zone-video-magnifier-canvas');
+        const continuePrompt = document.getElementById('continue-drone-prompt');
+        const continueYesBtn = document.getElementById('continue-yes-btn');
+        const continueNoBtn = document.getElementById('continue-no-btn');
+        const processingModal = document.getElementById('processing-modal');
+        const processingBody = document.getElementById('processing-body');
+        const narrationAudio = document.getElementById('narration-audio');
+        const testProcessingModal = document.getElementById('test-processing-modal');
+        const testTerminalBody = document.getElementById('test-terminal-body');
+        const studentTestModal = document.getElementById('student-test-modal');
+        const studentTestBody = document.getElementById('student-test-body');
+
+        // ============================================
+        // TEST PROCESSING OVERLAY (anticipation + pass/fail)
+        // ============================================
+        function showTestProcessingOverlay() {
+            testTerminalBody.innerHTML = '';
+            testProcessingModal.classList.add('active');
+        }
+
+        function hideTestProcessingOverlay() {
+            testProcessingModal.classList.remove('active');
+        }
+
+        /** Full reset: return to the opening screen (reliable clean state). */
+        function restartAppToBeginning() {
+            window.location.reload();
+        }
+
+        function appendTerminalLine(html) {
+            const line = document.createElement('div');
+            line.innerHTML = html;
+            testTerminalBody.appendChild(line);
+            testTerminalBody.scrollTop = testTerminalBody.scrollHeight;
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // ============================================
+        // STUDENT TEST TERMINAL (Quiz) — one question at a time
+        // ============================================
+        const STUDENT_TEST = {
+            q2: '',
+            suspects: Array.from({ length: 5 }, () => ({ building: '', weaponSeen: '', weaponTypeLastSeen: '' })),
+            q7Choice: '' // 'A' | 'B' | 'C'
+        };
+
+        let studentTestStepIdx = 0;
+        let studentTestHistoryEl = null;
+        let studentTestPromptEl = null;
+
+        function getStudentTestHistoryEl() {
+            return studentTestHistoryEl || document.getElementById('student-test-history');
+        }
+
+        function getStudentTestPromptEl() {
+            return studentTestPromptEl || document.getElementById('student-test-prompt');
+        }
+
+        function appendStudentTestLog(html) {
+            const el = getStudentTestHistoryEl();
+            if (!el) return;
+            const line = document.createElement('div');
+            line.className = 'log-line';
+            line.innerHTML = html;
+            el.appendChild(line);
+            el.scrollTop = el.scrollHeight;
+        }
+
+        function keyWeaponTypeOptions() {
+            return [
+                { v: '', t: '— select —' },
+                { v: 'pistol', t: 'Pistol' },
+                { v: 'rifle', t: 'Rifle' },
+                { v: 'knife', t: 'Knife' },
+                { v: 'other', t: 'Other' },
+                { v: 'multiple', t: 'Multiple weapons' },
+                { v: 'none', t: 'No weapon' }
+            ];
+        }
+
+        // If VB/VC scoring keys aren't available yet, still render building markers using the VA key's buildings.
+        let FALLBACK_BUILDINGS = null;
+        try {
+            const embeddedVA = document.getElementById('scoring-key-VA')?.textContent?.trim();
+            if (embeddedVA) {
+                const parsed = JSON.parse(embeddedVA);
+                if (parsed?.buildings && typeof parsed.buildings === 'object') {
+                    FALLBACK_BUILDINGS = parsed.buildings;
+                }
+            }
+        } catch (_) {
+            FALLBACK_BUILDINGS = null;
+        }
+
+        function getBuildingsForMarkers() {
+            const b = ACTIVE_SCORING_BUNDLE && ACTIVE_SCORING_BUNDLE.buildings;
+            if (b && typeof b === 'object' && Object.keys(b).length) return b;
+            if (FALLBACK_BUILDINGS && typeof FALLBACK_BUILDINGS === 'object') return FALLBACK_BUILDINGS;
+            return {};
+        }
+
+        function getBuildingLabelsFromKey() {
+            const b = getBuildingsForMarkers();
+            const labels = Object.keys(b).filter(k => /^[A-T]$/.test(k)).sort();
+            if (labels.length) return labels;
+            return Array.from({ length: 20 }, (_, i) => String.fromCharCode(65 + i));
+        }
+
+        /** Map preview for Q5 building steps: `newsimcity.png` + SVG markers from scoring key JSON. */
+        function buildStudentTestBuildingMap(sel) {
+            const buildings = getBuildingsForMarkers();
+            const mapWrap = document.createElement('div');
+            mapWrap.className = 'student-test-map-wrap';
+
+            const img = document.createElement('img');
+            // IMPORTANT: In Vite builds, static images are fingerprinted into /assets/ and the original
+            // filename may not exist. Reuse the already-rendered map image URL if available.
+            img.src = document.getElementById('angle-map-image')?.getAttribute('src')
+                || document.getElementById('angle-map-image')?.src
+                || 'newsimcity.png';
+            img.alt = 'Container city map with building markers A–T';
+
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('viewBox', '0 0 100 100');
+            svg.setAttribute('preserveAspectRatio', 'none');
+            const markersG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+            const markerEls = {};
+
+            function updateSelected() {
+                const v = sel.value;
+                Object.keys(markerEls).forEach(k => {
+                    markerEls[k].classList.toggle('selected', k === v);
+                });
+            }
+
+            getBuildingLabelsFromKey().forEach(label => {
+                const p = buildings[label];
+                if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return;
+
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                g.setAttribute('class', 'student-test-map-marker');
+                g.setAttribute('transform', `translate(${p.x}, ${p.y})`);
+
+                const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                c.setAttribute('cx', '0');
+                c.setAttribute('cy', '0');
+                c.setAttribute('r', '2.3');
+
+                const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                t.setAttribute('x', '0');
+                t.setAttribute('y', '0.2');
+                t.textContent = label;
+
+                g.appendChild(c);
+                g.appendChild(t);
+
+                g.addEventListener('click', (ev) => {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    sel.value = label;
+                    sel.dispatchEvent(new Event('change', { bubbles: true }));
+                    updateSelected();
+                });
+
+                markerEls[label] = g;
+                markersG.appendChild(g);
+            });
+
+            svg.appendChild(markersG);
+            mapWrap.appendChild(img);
+            mapWrap.appendChild(svg);
+
+            sel.addEventListener('change', updateSelected);
+            updateSelected();
+
+            const hint = document.createElement('div');
+            hint.className = 'hint';
+            hint.style.marginTop = '10px';
+            hint.textContent = Object.keys(markerEls).length
+                ? 'Click a letter on the map to select, or use the dropdown.'
+                : 'Marker positions are not loaded in the scoring key — use the dropdown only.';
+            mapWrap.appendChild(hint);
+
+            return mapWrap;
+        }
+
+        function buildStudentTestStepList() {
+            const steps = [
+                { type: 'intro' },
+                { type: 'q1' },
+                { type: 'q2' }
+            ];
+            if (STUDENT_TEST.q2 === '') return steps;
+            const n = Number(STUDENT_TEST.q2);
+            if (!Number.isFinite(n) || n < 0) return steps;
+            const c = Math.min(5, n);
+            for (let i = 0; i < c; i++) {
+                steps.push({ type: 'building', suspectIndex: i });
+                steps.push({ type: 'weaponSeen', suspectIndex: i });
+                steps.push({ type: 'weaponType', suspectIndex: i });
+            }
+            steps.push({ type: 'q7' });
+            steps.push({ type: 'confirm' });
+            return steps;
+        }
+
+        function studentTestAdvance() {
+            studentTestStepIdx += 1;
+            renderStudentTestStep();
+        }
+
+        function resetStudentTestWizard() {
+            STUDENT_TEST.q2 = '';
+            STUDENT_TEST.suspects = Array.from({ length: 5 }, () => ({ building: '', weaponSeen: '', weaponTypeLastSeen: '' }));
+            STUDENT_TEST.q7Choice = '';
+            studentTestStepIdx = 0;
+            const h = getStudentTestHistoryEl();
+            if (h) h.innerHTML = '';
+        }
+
+        async function showStudentTestTerminal() {
+            if (!studentTestModal || !studentTestBody) return;
+            studentTestHistoryEl = document.getElementById('student-test-history');
+            studentTestPromptEl = document.getElementById('student-test-prompt');
+            studentTestModal.classList.add('active');
+            studentTestModal.setAttribute('aria-hidden', 'false');
+            if (studentTestPromptEl) {
+                studentTestPromptEl.innerHTML = '<div class="dim" style="padding:8px 0;">Loading assessment rules…</div>';
+            }
+            if (studentTestHistoryEl) studentTestHistoryEl.innerHTML = '';
+            try {
+                const v = String(APP_BUILD_VERSION || '').toUpperCase();
+                const a = String(state.selectedAngle || '').toUpperCase();
+                if (!ACTIVE_SCORING_BUNDLE || String(ACTIVE_SCORING_BUNDLE.version || '').toUpperCase() !== v || String(ACTIVE_SCORING_BUNDLE.angle || '').toUpperCase() !== a) {
+                    ACTIVE_SCORING_BUNDLE = await loadScoringBundle(v, a);
+                }
+                ACTIVE_SCORING_KEY = pickKeyFromBundle(ACTIVE_SCORING_BUNDLE, state.testPart);
+            } catch (_) {
+                /* keep existing ACTIVE_SCORING_BUNDLE / ACTIVE_SCORING_KEY if prefetch already set it */
+            }
+            resetStudentTestWizard();
+            renderStudentTestStep();
+        }
+
+        function hideStudentTestTerminal() {
+            if (!studentTestModal) return;
+            studentTestModal.classList.remove('active');
+            studentTestModal.setAttribute('aria-hidden', 'true');
+        }
+
+        function renderStudentTestStep() {
+            const promptEl = getStudentTestPromptEl();
+            if (!promptEl) return;
+            promptEl.innerHTML = '';
+
+            const list = buildStudentTestStepList();
+            let step = list[studentTestStepIdx];
+
+            while (step && step.type === 'weaponType') {
+                const s = STUDENT_TEST.suspects[step.suspectIndex];
+                if (s && s.weaponSeen === 'N') {
+                    s.weaponTypeLastSeen = 'none';
+                    appendStudentTestLog(`<span class="dim">[AUTO]</span> Suspect ${step.suspectIndex + 1} weapon type → <span class="ok">none</span> (weapon not seen)`);
+                    studentTestStepIdx += 1;
+                    step = list[studentTestStepIdx];
+                } else {
+                    break;
+                }
+            }
+
+            if (!step) {
+                const passed = scoreStudentTestAgainstKey();
+                hideStudentTestTerminal();
+                submitStudentTest({ passed });
+                return;
+            }
+
+            const wrap = document.createElement('div');
+            wrap.className = 'prompt-block';
+
+            const title = document.createElement('div');
+            title.className = 'prompt-title';
+
+            const body = document.createElement('div');
+            body.className = 'prompt-text';
+
+            const actions = document.createElement('div');
+            actions.className = 'prompt-actions';
+
+            const angle = String(state.selectedAngle || '').toUpperCase() || '—';
+            let mapExtra = null;
+
+            if (step.type === 'intro') {
+                title.textContent = '[LINK]';
+                body.innerHTML = `<span class="dim">SECURE CHANNEL STANDBY</span><br>
+POST-RECON ASSESSMENT MODULE<br>
+<span class="dim">Answer each prompt in order. Use the controls below.</span>`;
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'test-btn';
+                btn.textContent = 'BEGIN →';
+                btn.addEventListener('click', () => {
+                    appendStudentTestLog(`<span class="dim">> SESSION START</span>`);
+                    studentTestAdvance();
+                });
+                actions.appendChild(btn);
+            } else if (step.type === 'q1') {
+                title.textContent = 'Q1 / AUTO — DRONE ANGLE';
+                body.innerHTML = `Recorded approach angle: <span class="ok">${angle}</span><br><span class="dim">(From your earlier selection.)</span>`;
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'test-btn';
+                btn.textContent = 'ACKNOWLEDGE →';
+                btn.addEventListener('click', () => {
+                    appendStudentTestLog(`<span class="dim">Q1</span> Angle <span class="ok">${angle}</span>`);
+                    studentTestAdvance();
+                });
+                actions.appendChild(btn);
+            } else if (step.type === 'q2') {
+                title.textContent = 'Q2 — SUSPECT COUNT';
+                body.textContent = 'How many suspects (0–5)?';
+                const sel = document.createElement('select');
+                sel.innerHTML = `
+                    <option value="">— select —</option>
+                    <option value="0">0</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                `;
+                sel.value = STUDENT_TEST.q2;
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'test-btn';
+                btn.textContent = 'NEXT →';
+                btn.addEventListener('click', () => {
+                    if (sel.value === '') return;
+                    STUDENT_TEST.q2 = sel.value;
+                    const n = Number(STUDENT_TEST.q2);
+                    for (let i = Math.max(0, n); i < 5; i++) {
+                        STUDENT_TEST.suspects[i] = { building: '', weaponSeen: '', weaponTypeLastSeen: '' };
+                    }
+                    appendStudentTestLog(`<span class="dim">Q2</span> Suspects: <span class="ok">${STUDENT_TEST.q2}</span>`);
+                    studentTestAdvance();
+                });
+                actions.appendChild(sel);
+                actions.appendChild(btn);
+            } else if (step.type === 'building') {
+                const i = step.suspectIndex;
+                title.textContent = `Q5 — SUSPECT ${i + 1} / BUILDING`;
+                body.textContent = 'Which building marker (A–T)? Choose in the bar below (or click a letter on the map), then press NEXT.';
+                const sel = document.createElement('select');
+                const labels = getBuildingLabelsFromKey();
+                sel.innerHTML = `<option value="">— select —</option>` + labels.map(l => `<option value="${l}">${l}</option>`).join('');
+                sel.value = STUDENT_TEST.suspects[i].building || '';
+                mapExtra = buildStudentTestBuildingMap(sel);
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'test-btn';
+                btn.textContent = 'NEXT →';
+                btn.addEventListener('click', () => {
+                    if (!sel.value) return;
+                    STUDENT_TEST.suspects[i].building = sel.value;
+                    appendStudentTestLog(`<span class="dim">Suspect ${i + 1} building</span> → <span class="ok">${sel.value}</span>`);
+                    studentTestAdvance();
+                });
+                actions.appendChild(sel);
+                actions.appendChild(btn);
+            } else if (step.type === 'weaponSeen') {
+                const i = step.suspectIndex;
+                title.textContent = `Q5 — SUSPECT ${i + 1} / WEAPON SEEN`;
+                body.textContent = 'Was a weapon seen (last observation)?';
+                const sel = document.createElement('select');
+                sel.innerHTML = `<option value="">— select —</option><option value="Y">Y</option><option value="N">N</option>`;
+                sel.value = STUDENT_TEST.suspects[i].weaponSeen || '';
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'test-btn';
+                btn.textContent = 'NEXT →';
+                btn.addEventListener('click', () => {
+                    if (!sel.value) return;
+                    STUDENT_TEST.suspects[i].weaponSeen = sel.value;
+                    if (sel.value === 'N') {
+                        STUDENT_TEST.suspects[i].weaponTypeLastSeen = 'none';
+                    } else if (STUDENT_TEST.suspects[i].weaponTypeLastSeen === 'none') {
+                        STUDENT_TEST.suspects[i].weaponTypeLastSeen = '';
+                    }
+                    appendStudentTestLog(`<span class="dim">Suspect ${i + 1} weapon seen</span> → <span class="ok">${sel.value}</span>`);
+                    studentTestAdvance();
+                });
+                actions.appendChild(sel);
+                actions.appendChild(btn);
+            } else if (step.type === 'weaponType') {
+                const i = step.suspectIndex;
+                title.textContent = `Q5 — SUSPECT ${i + 1} / WEAPON TYPE (LAST SEEN)`;
+                body.textContent = 'Weapon type (last seen):';
+                const sel = document.createElement('select');
+                sel.innerHTML = keyWeaponTypeOptions().map(o => `<option value="${o.v}">${o.t}</option>`).join('');
+                sel.value = STUDENT_TEST.suspects[i].weaponTypeLastSeen || '';
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'test-btn';
+                btn.textContent = 'NEXT →';
+                btn.addEventListener('click', () => {
+                    if (!sel.value) return;
+                    STUDENT_TEST.suspects[i].weaponTypeLastSeen = sel.value;
+                    appendStudentTestLog(`<span class="dim">Suspect ${i + 1} weapon type</span> → <span class="ok">${sel.value}</span>`);
+                    studentTestAdvance();
+                });
+                actions.appendChild(sel);
+                actions.appendChild(btn);
+            } else if (step.type === 'q7') {
+                title.textContent = 'Q7 — CAN THE SUSPECT(S) BE DETAINED?';
+                body.innerHTML = `<span class="dim">Select the best answer:</span><br>
+A. Yes, clear view of the suspect location(s) without weapon.<br>
+B. Not without tear gas or flash bang due to risk of a weapon.<br>
+C. No, suspect has a weapon, recommend maintaining minimum safe distance.`;
+
+                const sel = document.createElement('select');
+                sel.innerHTML = `
+                    <option value="">— select —</option>
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                    <option value="C">C</option>
+                `;
+                sel.value = STUDENT_TEST.q7Choice || '';
+
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'test-btn';
+                btn.textContent = 'NEXT →';
+                btn.addEventListener('click', () => {
+                    if (!sel.value) return;
+                    STUDENT_TEST.q7Choice = sel.value;
+                    appendStudentTestLog(`<span class="dim">Q7</span> Choice → <span class="ok">${sel.value}</span>`);
+                    studentTestAdvance();
+                });
+
+                actions.appendChild(sel);
+                actions.appendChild(btn);
+            } else if (step.type === 'confirm') {
+                title.textContent = '[READY TO TRANSMIT]';
+                body.innerHTML = `<span class="dim">Review log above. When ready, transmit answers for scoring.</span><br><br>
+<span class="dim">Q7 selected:</span> <span class="ok">${STUDENT_TEST.q7Choice || '—'}</span>`;
+                const restart = document.createElement('button');
+                restart.type = 'button';
+                restart.className = 'test-btn secondary';
+                restart.textContent = 'RESTART TEST';
+                restart.addEventListener('click', () => {
+                    resetStudentTestWizard();
+                    appendStudentTestLog(`<span class="dim">> SESSION RESET</span>`);
+                    renderStudentTestStep();
+                });
+                const sub = document.createElement('button');
+                sub.type = 'button';
+                sub.className = 'test-btn';
+                sub.textContent = 'TRANSMIT & SCORE →';
+                sub.addEventListener('click', () => {
+                    appendStudentTestLog(`<span class="dim">> TRANSMIT</span>`);
+                    studentTestAdvance();
+                });
+                actions.appendChild(restart);
+                actions.appendChild(sub);
+            }
+
+            wrap.appendChild(title);
+            wrap.appendChild(body);
+            actions.className = step.type === 'building'
+                ? 'prompt-actions prompt-actions-building'
+                : 'prompt-actions';
+            const buildingControlsFirst = step.type === 'building';
+            if (buildingControlsFirst && actions.childNodes.length) wrap.appendChild(actions);
+            if (mapExtra) wrap.appendChild(mapExtra);
+            if (!buildingControlsFirst && actions.childNodes.length) wrap.appendChild(actions);
+            promptEl.appendChild(wrap);
+
+            const primaryBtn = actions.querySelector('.test-btn:not(.secondary)') || actions.querySelector('.test-btn');
+            if (primaryBtn) primaryBtn.focus();
+        }
+
+        function normalizeBoolArray(v, count, fallback = true) {
+            if (Array.isArray(v)) return v.slice(0, count).map(x => !!x).concat(Array.from({ length: count }, () => fallback)).slice(0, count);
+            if (typeof v === 'boolean') return Array.from({ length: count }, () => v);
+            return Array.from({ length: count }, () => fallback);
+        }
+
+        function isWildcardAnswer(v) {
+            return v === null || v === undefined;
+        }
+
+        function matchExactOrWildcard(studentValue, keyValue) {
+            if (isWildcardAnswer(keyValue)) return true; // null/undefined means "doesn't matter"
+            return String(studentValue || '') === String(keyValue || '');
+        }
+
+        function matchBuildingOrWildcard(studentBuilding, suspectKey) {
+            // Prefer ANY-of list if present; otherwise fall back to single building; null means wildcard.
+            const anyOf = Array.isArray(suspectKey?.buildingAnyOf) ? suspectKey.buildingAnyOf.filter(Boolean).map(String) : [];
+            if (anyOf.length) return anyOf.includes(String(studentBuilding || ''));
+            return matchExactOrWildcard(studentBuilding, suspectKey?.building);
+        }
+
+        function scoreStudentTestAgainstKey() {
+            const key = ACTIVE_SCORING_KEY;
+            if (!key || !key.answers || !key.required) {
+                console.warn('No ACTIVE_SCORING_KEY loaded; failing closed.');
+                return false;
+            }
+
+            const req = key.required || {};
+            const ans = key.answers || {};
+
+            // Q1 (auto from selection)
+            const studentQ1 = String(state.selectedAngle || '').toUpperCase();
+            if (req.q1_angle && !isWildcardAnswer(ans.q1_angle) && studentQ1 !== String(ans.q1_angle || '').toUpperCase()) return false;
+
+            // Q2
+            const studentQ2 = (STUDENT_TEST.q2 !== '') ? Number(STUDENT_TEST.q2) : null;
+            if (req.q2_suspects) {
+                // null in key means "doesn't matter"
+                if (!isWildcardAnswer(ans.q2_suspects)) {
+                    if (!Number.isFinite(studentQ2)) return false;
+                    if (studentQ2 !== Number(ans.q2_suspects)) return false;
+                }
+            }
+
+            const count = Number.isFinite(studentQ2) ? Math.max(0, Math.min(5, studentQ2)) : 0;
+            const keySuspects = Array.isArray(ans.q5_suspects) ? ans.q5_suspects : [];
+            const rBuild = normalizeBoolArray(req.q5_building, count, true);
+            const rWeapSeen = normalizeBoolArray((req.q5_weaponSeen !== undefined) ? req.q5_weaponSeen : req.q5_weapon, count, true);
+            const rWeapType = normalizeBoolArray((req.q5_weaponType !== undefined) ? req.q5_weaponType : req.q5_weapon, count, true);
+
+            for (let i = 0; i < count; i++) {
+                const ks = keySuspects[i] || {};
+                const ss = STUDENT_TEST.suspects[i] || {};
+
+                if (rBuild[i]) {
+                    if (!matchBuildingOrWildcard(ss.building, ks)) return false;
+                }
+                if (rWeapSeen[i]) {
+                    if (!matchExactOrWildcard(ss.weaponSeen, ks.weaponSeen)) return false;
+                }
+                if (rWeapType[i]) {
+                    if (!matchExactOrWildcard(ss.weaponTypeLastSeen, ks.weaponTypeLastSeen)) return false;
+                }
+            }
+
+            // Q7
+            if (req.q7_canDetain) {
+                const choice = String(STUDENT_TEST.q7Choice || '');
+                // null in key means "doesn't matter"
+                if (!isWildcardAnswer(ans.q7_canDetain)) {
+                    if (!choice) return false;
+                    const allowed = Array.isArray(ans.q7_canDetain) ? ans.q7_canDetain.map(String) : [];
+                    // If key has multiple valid answers, accept ANY matching selection.
+                    if (!allowed.includes(choice)) return false;
+                }
+            }
+
+            return true;
+        }
+
+        // ============================================
+        // TEST SUBMISSION: Processing terminal sequence
+        // ============================================
+        function showProcessingModal() {
+            processingModal.classList.add('active');
+            processingModal.setAttribute('aria-hidden', 'false');
+        }
+
+        function hideProcessingModal() {
+            processingModal.classList.remove('active');
+            processingModal.setAttribute('aria-hidden', 'true');
+        }
+
+        async function processingPrint(lines, { clear = true, speed = 18 } = {}) {
+            if (clear) processingBody.innerHTML = '';
+            for (const line of lines) {
+                const div = document.createElement('div');
+                div.innerHTML = line;
+                processingBody.appendChild(div);
+                processingBody.scrollTop = processingBody.scrollHeight;
+                await sleep(speed);
+            }
+        }
+
+        async function runTestProcessingSequence({ passed }) {
+            showProcessingModal();
+
+            // Build anticipation: staged output + animated dots
+            processingBody.innerHTML = '';
+            const header = document.createElement('div');
+            header.innerHTML = `PROCESSING TEST<span class="processing-cursor"></span>`;
+            processingBody.appendChild(header);
+
+            const dots = ['.', '..', '...'];
+            for (let i = 0; i < 10; i++) {
+                header.innerHTML = `PROCESSING TEST${dots[i % dots.length]}<span class="processing-cursor"></span>`;
+                await sleep(160);
+            }
+
+            await processingPrint([
+                `<span class="dim">[INIT]</span> Establishing scoring session...`,
+                `<span class="dim">[HASH]</span> Verifying integrity of response payload...`,
+                `<span class="dim">[RULES]</span> Loading version ruleset...`,
+                `<span class="dim">[EVAL]</span> Evaluating required objectives...`,
+                `<span class="dim">[EVAL]</span> Cross-checking responses...`,
+            ], { clear: false, speed: 90 });
+
+            await sleep(450);
+
+            const resultLine = document.createElement('div');
+            resultLine.className = `processing-result ${passed ? 'pass' : 'fail'}`;
+            resultLine.textContent = passed ? 'RESULT: PASS' : 'RESULT: FAIL';
+            processingBody.appendChild(resultLine);
+
+            const follow = document.createElement('div');
+            follow.innerHTML = passed
+                ? `<span class="ok">ACCESS GRANTED</span> — Objectives satisfied.`
+                : `<span class="bad">ACCESS DENIED</span> — Required objectives not satisfied.`;
+            processingBody.appendChild(follow);
+
+            const hint = document.createElement('div');
+            hint.className = 'dim';
+            hint.style.marginTop = '10px';
+            hint.textContent = '[Press ESC to restart from the beginning]';
+            processingBody.appendChild(hint);
+            processingBody.scrollTop = processingBody.scrollHeight;
+        }
+
+        // Call this from the student "Submit" button once the quiz exists.
+        // For now it's safe to wire later: submitStudentTest({ passed: true/false }).
+        function submitStudentTest({ passed }) {
+            runTestProcessingSequence({ passed: !!passed });
+        }
+
+        // Call this when the student submits the test (we'll wire submit later).
+        // Example: runTestProcessingSequence({ passed: true })
+        async function runTestProcessingSequence({ passed }) {
+            showTestProcessingOverlay();
+
+            appendTerminalLine('<span class="dim">[INIT]</span> Linking secure scoring channel...');
+            await sleep(550);
+            appendTerminalLine('<span class="dim">[OK]</span> Channel established.');
+            await sleep(350);
+            appendTerminalLine('<span class="dim">[SCAN]</span> Validating responses...');
+            await sleep(550);
+
+            // Build anticipation with animated dots
+            const dotsLine = document.createElement('div');
+            dotsLine.innerHTML = '<span class="warn">PROCESSING TEST</span><span id="processing-dots"></span><span class="test-terminal-cursor"></span>';
+            testTerminalBody.appendChild(dotsLine);
+
+            const dotsEl = document.getElementById('processing-dots');
+            let dots = 0;
+            const dotsInterval = setInterval(() => {
+                dots = (dots + 1) % 4;
+                if (dotsEl) dotsEl.textContent = ' ' + '.'.repeat(dots);
+            }, 300);
+
+            // Simulated processing time
+            await sleep(1800);
+            clearInterval(dotsInterval);
+
+            // Clear cursor line and display result
+            testTerminalBody.innerHTML = '';
+            appendTerminalLine('<span class="dim">[DONE]</span> Scoring complete.');
+            await sleep(450);
+
+            if (passed) {
+                appendTerminalLine('<div style="margin-top:14px; font-size:1.3rem;"><span class="ok">RESULT: PASS</span></div>');
+                appendTerminalLine('<span class="dim">Status:</span> <span class="ok">CERTIFIED</span>');
+            } else {
+                appendTerminalLine('<div style="margin-top:14px; font-size:1.3rem;"><span class="fail">RESULT: FAIL</span></div>');
+                appendTerminalLine('<span class="dim">Status:</span> <span class="fail">RETASKING REQUIRED</span>');
+            }
+
+            appendTerminalLine('<div class="dim" style="margin-top:18px;">(Press ESC to restart from the beginning)</div>');
+        }
+
+        // Update datetime display
+        function updateDateTime() {
+            const now = new Date();
+            const options = { 
+                year: 'numeric', 
+                month: 'short', 
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            };
+            datetimeDisplay.textContent = now.toLocaleDateString('en-US', options);
+        }
+        setInterval(updateDateTime, 1000);
+        updateDateTime();
+
+        // Typewriter effect
+        async function typeText(elementId, text, speed = 30) {
+            state.isTyping = true;
+            state.skipRequested = false;
+            const element = document.getElementById(elementId);
+            const consoleBody = document.getElementById('console-body');
+            element.innerHTML = '<span class="cursor"></span>';
+            
+            let displayedText = '';
+            let charCount = 0;
+            
+            for (let i = 0; i < text.length; i++) {
+                // Check for skip request (secret admin fast-forward)
+                if (state.skipRequested) {
+                    displayedText = text;
+                    break;
+                }
+                
+                displayedText += text[i];
+                charCount++;
+                
+                // Add formatting
+                let formattedText = displayedText
+                    .replace(/\*\*\*(.*?)\*\*\*/g, '<span class="priority-alert">$1</span>')
+                    .replace(/UNKNOWN/g, '<span class="highlight">UNKNOWN</span>')
+                    .replace(/PRIORITY/g, '<span class="priority-alert">PRIORITY</span>')
+                    .replace(/BOLO/g, '<span class="highlight">BOLO</span>');
+                
+                element.innerHTML = formattedText + '<span class="cursor"></span>';
+                
+                // Auto-scroll to keep cursor in view (on newlines or every 50 chars)
+                if (text[i] === '\n' || charCount % 50 === 0) {
+                    const cursor = element.querySelector('.cursor');
+                    if (cursor && consoleBody) {
+                        cursor.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }
+                }
+                
+                // Variable speed for punctuation
+                let delay = speed;
+                if (text[i] === '.' || text[i] === '!' || text[i] === '?') {
+                    delay = speed * 5;
+                } else if (text[i] === ',') {
+                    delay = speed * 2;
+                } else if (text[i] === '\n') {
+                    delay = speed * 3;
+                }
+                
+                await sleep(delay);
+            }
+            
+            // Show complete text with formatting
+            let formattedText = displayedText
+                .replace(/\*\*\*(.*?)\*\*\*/g, '<span class="priority-alert">$1</span>')
+                .replace(/UNKNOWN/g, '<span class="highlight">UNKNOWN</span>')
+                .replace(/PRIORITY/g, '<span class="priority-alert">PRIORITY</span>')
+                .replace(/BOLO/g, '<span class="highlight">BOLO</span>');
+            element.innerHTML = formattedText;
+            
+            // Final scroll to ensure end of text is visible
+            element.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            
+            state.isTyping = false;
+            state.skipRequested = false;
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // ============================================
+        // NARRATION (MP3 1-7)
+        // ============================================
+        const narrationClips = {
+            1: ['MP3/1-An unidentified.mp3'],
+            2: ['MP3/2-Flight path.mp3'],
+            3: ['MP3/3-Be on the.mp3', 'MP3/4-An explosion.mp3'],
+            4: ['MP3/5-suspect is.mp3', 'MP3/6-suspect should.mp3'],
+            5: ['MP3/7-TheComm.mp3']
+        };
+
+        let narrationQueue = [];
+        let narrationActiveSection = null;
+
+        function stopNarration() {
+            narrationQueue = [];
+            narrationActiveSection = null;
+            if (!narrationAudio) return;
+            narrationAudio.pause();
+            narrationAudio.currentTime = 0;
+            narrationAudio.onended = null;
+        }
+
+        function playNextNarrationClip() {
+            if (!narrationAudio) return;
+            const next = narrationQueue.shift();
+            if (!next) return;
+            narrationAudio.src = next;
+            narrationAudio.play().catch(() => {
+                // Autoplay can be blocked in some contexts; student started with SPACE so this should generally succeed.
+            });
+        }
+
+        function playNarrationForSection(sectionNumber) {
+            // Only play while on intel screen
+            if (state.currentScreen !== 'intel') return;
+            stopNarration();
+            narrationActiveSection = sectionNumber;
+            narrationQueue = (narrationClips[sectionNumber] || []).slice();
+            narrationAudio.onended = () => {
+                // If user advanced sections, don't continue old narration
+                if (narrationActiveSection !== sectionNumber) return;
+                playNextNarrationClip();
+            };
+            // Delay narration at the start of certain sections to control pacing.
+            const sectionDelayMs =
+                (sectionNumber === 1) ? 2500 :
+                (sectionNumber === 2) ? 2000 :
+                (sectionNumber === 5) ? 1000 :
+                0;
+            if (sectionDelayMs > 0) {
+                const token = narrationActiveSection;
+                setTimeout(() => {
+                    if (narrationActiveSection !== token) return; // cancelled by advancing/stop
+                    playNextNarrationClip();
+                }, sectionDelayMs);
+            } else {
+                playNextNarrationClip();
+            }
+        }
+
+        // ============================================
+        // FLIGHT PATH CONFIGURATION
+        // ============================================
+        // Coordinates are in percentages (0-100) of the map image
+        // Adjust these waypoints to change the drone's flight path
+        // Format: [x%, y%] where (0,0) is top-left, (100,100) is bottom-right
+        
+        const flightPathWaypoints = [
+            [16, 96],  // START
+            [77, 1],   // EXIT
+        ];
+
+        // Path curvature setting (0 = straight lines, 10 = very curved)
+        // Adjust this value to match what you designed in the path editor
+        const pathCurvature = 1.0;
+
+        // ============================================
+        // FLIGHT PATH FUNCTIONS
+        // ============================================
+        
+        function generatePathD(waypoints) {
+            if (waypoints.length < 2) return '';
+            
+            // Create a smooth Catmull-Rom spline through the waypoints
+            // This creates natural-looking curves that pass through all points
+            
+            function catmullRomToBezier(p0, p1, p2, p3, tension = 0.5) {
+                // Calculate control points for cubic bezier
+                const cp1x = p1[0] + (p2[0] - p0[0]) / 6 * tension;
+                const cp1y = p1[1] + (p2[1] - p0[1]) / 6 * tension;
+                const cp2x = p2[0] - (p3[0] - p1[0]) / 6 * tension;
+                const cp2y = p2[1] - (p3[1] - p1[1]) / 6 * tension;
+                return { cp1x, cp1y, cp2x, cp2y };
+            }
+            
+            let d = `M ${waypoints[0][0]} ${waypoints[0][1]}`;
+            
+            // Extended waypoints for smooth start/end
+            const extended = [
+                waypoints[0], // Duplicate first point
+                ...waypoints,
+                waypoints[waypoints.length - 1] // Duplicate last point
+            ];
+            
+            for (let i = 1; i < extended.length - 2; i++) {
+                const p0 = extended[i - 1];
+                const p1 = extended[i];
+                const p2 = extended[i + 1];
+                const p3 = extended[i + 2];
+                
+                const { cp1x, cp1y, cp2x, cp2y } = catmullRomToBezier(p0, p1, p2, p3, pathCurvature);
+                
+                d += ` C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)}, ${cp2x.toFixed(2)} ${cp2y.toFixed(2)}, ${p2[0]} ${p2[1]}`;
+            }
+            
+            return d;
+        }
+
+        function initializeFlightPath() {
+            const pathD = generatePathD(flightPathWaypoints);
+            const flightPath = document.getElementById('flight-path');
+            const flightTrail = document.getElementById('flight-trail');
+            const startMarker = document.getElementById('start-marker');
+            const endMarker = document.getElementById('end-marker');
+            const startLabel = document.getElementById('start-label');
+            const endLabel = document.getElementById('end-label');
+            const svg = document.getElementById('flight-path-svg');
+            
+            // Set the path
+            flightPath.setAttribute('d', pathD);
+            flightTrail.setAttribute('d', pathD);
+            
+            // Position start marker
+            const start = flightPathWaypoints[0];
+            startMarker.setAttribute('cx', start[0]);
+            startMarker.setAttribute('cy', start[1]);
+            startLabel.setAttribute('x', start[0]);
+            startLabel.setAttribute('y', start[1] - 2);
+            
+            // Position end marker
+            const end = flightPathWaypoints[flightPathWaypoints.length - 1];
+            endMarker.setAttribute('cx', end[0]);
+            endMarker.setAttribute('cy', end[1]);
+            endLabel.setAttribute('x', end[0]);
+            endLabel.setAttribute('y', end[1] - 2);
+            
+            // Calculate path length for animation
+            const pathLength = flightPath.getTotalLength();
+            flightPath.style.strokeDasharray = pathLength;
+            flightPath.style.strokeDashoffset = pathLength;
+            flightTrail.style.strokeDasharray = pathLength;
+            flightTrail.style.strokeDashoffset = pathLength;
+        }
+
+        function animateFlightPath() {
+            const flightPath = document.getElementById('flight-path');
+            const flightTrail = document.getElementById('flight-trail');
+            const droneMarker = document.getElementById('drone-marker');
+            const droneGlowOuter = document.getElementById('drone-glow-outer');
+            const droneCore = document.getElementById('drone-core');
+            
+            // Show the dashed guide path
+            flightPath.classList.add('animate');
+            
+            // Animate all drone marker elements
+            droneMarker.classList.add('animate');
+            droneGlowOuter.classList.add('animate');
+            droneCore.classList.add('animate');
+            
+            animateDroneAlongPath();
+        }
+
+        function animateDroneAlongPath() {
+            const flightPath = document.getElementById('flight-path');
+            const traveledPath = document.getElementById('flight-path-traveled');
+            const droneMarker = document.getElementById('drone-marker');
+            const droneGlowOuter = document.getElementById('drone-glow-outer');
+            const droneCore = document.getElementById('drone-core');
+            const continuePrompt = document.querySelector('.map-continue-prompt');
+            
+            const pathLength = flightPath.getTotalLength();
+            const duration = 6000; // Slower for better effect
+            let startTime = performance.now();
+            let firstLoopComplete = false;
+            
+            // Store points for the traveled path
+            let traveledPoints = [];
+            
+            function updateDronePosition(currentTime) {
+                // Stop if map is no longer showing
+                if (!state.showingMap) return;
+                
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // Smooth ease-in-out for more natural movement
+                const easedProgress = progress < 0.5 
+                    ? 2 * progress * progress 
+                    : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+                
+                const point = flightPath.getPointAtLength(pathLength * easedProgress);
+                
+                // Update all drone elements
+                droneMarker.setAttribute('cx', point.x);
+                droneMarker.setAttribute('cy', point.y);
+                droneGlowOuter.setAttribute('cx', point.x);
+                droneGlowOuter.setAttribute('cy', point.y);
+                droneCore.setAttribute('cx', point.x);
+                droneCore.setAttribute('cy', point.y);
+                
+                // Build traveled path
+                traveledPoints.push([point.x, point.y]);
+                if (traveledPoints.length > 1) {
+                    let d = `M ${traveledPoints[0][0]} ${traveledPoints[0][1]}`;
+                    for (let i = 1; i < traveledPoints.length; i++) {
+                        d += ` L ${traveledPoints[i][0]} ${traveledPoints[i][1]}`;
+                    }
+                    traveledPath.setAttribute('d', d);
+                }
+                
+                if (progress < 1) {
+                    requestAnimationFrame(updateDronePosition);
+                } else {
+                    // Animation complete - show continue prompt after first loop
+                    if (!firstLoopComplete) {
+                        firstLoopComplete = true;
+                        continuePrompt.classList.add('visible');
+                    }
+                    
+                    // Pause then loop
+                    setTimeout(() => {
+                        if (state.showingMap) {
+                            // Reset for next loop
+                            traveledPoints = [];
+                            traveledPath.setAttribute('d', '');
+                            startTime = performance.now();
+                            requestAnimationFrame(updateDronePosition);
+                        }
+                    }, 1500); // 1.5 second pause before looping
+                }
+            }
+            
+            requestAnimationFrame(updateDronePosition);
+        }
+
+        function resetFlightPath() {
+            const flightPath = document.getElementById('flight-path');
+            const flightTrail = document.getElementById('flight-trail');
+            const traveledPath = document.getElementById('flight-path-traveled');
+            const droneMarker = document.getElementById('drone-marker');
+            const droneGlowOuter = document.getElementById('drone-glow-outer');
+            const droneCore = document.getElementById('drone-core');
+            const continuePrompt = document.querySelector('.map-continue-prompt');
+            
+            flightPath.classList.remove('animate');
+            flightTrail.classList.remove('animate');
+            droneMarker.classList.remove('animate');
+            droneGlowOuter.classList.remove('animate');
+            droneCore.classList.remove('animate');
+            
+            // Reset traveled path
+            traveledPath.setAttribute('d', '');
+            
+            // Reset transitions
+            droneMarker.style.transition = '';
+            droneGlowOuter.style.transition = '';
+            droneCore.style.transition = '';
+            
+            // Hide continue prompt
+            if (continuePrompt) {
+                continuePrompt.classList.remove('visible');
+            }
+        }
+
+        // Show map
+        function showMap() {
+            state.showingMap = true;
+            mapOverlay.classList.add('active');
+            mapContainer.classList.add('active');
+            
+            // Initialize and animate flight path
+            setTimeout(() => {
+                initializeFlightPath();
+                setTimeout(() => {
+                    animateFlightPath();
+                }, 500);
+            }, 100);
+        }
+
+        // Hide map
+        function hideMap() {
+            state.showingMap = false;
+            mapOverlay.classList.remove('active');
+            mapContainer.classList.remove('active');
+            resetFlightPath();
+        }
+
+        // ============================================
+        // CINEMATIC DRONE ANIMATION FUNCTIONS
+        // ============================================
+
+        // Cinematic Drone Animation Configuration
+        const droneAnimation = {
+            imageName: "a3.png",
+            startLocation: { x: 60.0, y: 11.7 },
+            endLocation: { x: 38.0, y: 77.6 },
+            followZoom: 2.0,  // How close camera follows drone
+            duration: 6000,  // milliseconds
+            trackingAnchor: { x: 0, y: 0 }
+        };
+
+        // CINEMATIC SEQUENCE (Film-style):
+        // ═══════════════════════════════════════════════════
+        // Phase 1 (0-20%): ZOOM IN
+        //   - Start: Full wide shot of entire area
+        //   - Camera: Zooms IN smoothly to TAKEOFF location
+        //   - Drone: Sitting on ground at START, waiting
+        //   - Effect: "Establishing shot" then focus on our subject
+        //
+        // Phase 2 (20-35%): LIFTOFF
+        //   - Camera: Stays locked on drone (2.0x zoom)
+        //   - Drone: Lifts off vertically from ground
+        //   - View: Drone fills most of the screen
+        //   - Effect: Dramatic close-up liftoff
+        //
+        // Phase 3 (35-100%): FLIGHT
+        //   - Camera: Follows drone closely (2.0x zoom maintained)
+        //   - Drone: Flies from START to LANDING zone
+        //   - Tracking: Camera pans/moves to keep drone centered
+        //   - Effect: Immersive "follow cam" like action films
+        //
+        // LANDING:
+        //   - Drone remains visible at LANDING location after arrival
+        //   - Camera returns to normal view showing final position
+        //
+        // Total Duration: 6 seconds
+        // ═══════════════════════════════════════════════════
+
+        // Show cinematic animation
+        function showVideoModal() {
+            state.showingVideo = true;
+            videoModal.classList.add('active');
+            
+            // Start animation after brief delay
+            setTimeout(() => {
+                playCinematicAnimation();
+            }, 500);
+        }
+
+        // Play cinematic drone animation
+        function playCinematicAnimation() {
+            cinematicMapWrapper.classList.add('animating');
+            cinematicDrone.classList.add('animating');
+            cinematicMapWrapper.style.transformOrigin = '0px 0px';
+            
+            const startTime = performance.now();
+            const { startLocation, endLocation, followZoom, duration } = droneAnimation;
+            
+            function animate(currentTime) {
+                if (!state.showingVideo) return;
+                
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // Update timestamp display
+                const seconds = Math.floor(elapsed / 1000);
+                const minutes = Math.floor(seconds / 60);
+                const hours = Math.floor(minutes / 60);
+                videoTimestamp.textContent = 
+                    String(hours % 24).padStart(2, '0') + ':' +
+                    String(minutes % 60).padStart(2, '0') + ':' +
+                    String(seconds % 60).padStart(2, '0');
+                
+                let scale, droneX, droneY;
+                const anchor = droneAnimation.trackingAnchor || { x: 0, y: 0 };
+                
+                // Pan + zoom so the drone (viewBox %) stays at the map viewport center.
+                // matrix(s,0,0,s,e,f) with transform-origin 0 0 maps (px,py) -> (s*px+e, s*py+f).
+                //
+                // IMPORTANT: Do NOT use getBoundingClientRect() on the wrapper — it includes the
+                // active CSS transform, so W/H grow with scale and break e/f every frame. Use
+                // offsetWidth/offsetHeight (layout box, pre-transform on this element).
+                function cameraMatrixForDrone(pxPercent, pyPercent, s) {
+                    const W = cinematicMapWrapper.offsetWidth || cinematicMap.offsetWidth || 1;
+                    const H = cinematicMapWrapper.offsetHeight || cinematicMap.offsetHeight || 1;
+                    const px = (pxPercent / 100) * W;
+                    const py = (pyPercent / 100) * H;
+                    const e = W / 2 - px * s;
+                    const f = H / 2 - py * s;
+                    return { e, f, W, H };
+                }
+                
+                if (progress < 0.2) {
+                    // Phase 1: Zoom IN from full view to start location (0-20%)
+                    const zoomProgress = progress / 0.2;
+                    const easedZoom = zoomProgress < 0.5 
+                        ? 2 * zoomProgress * zoomProgress 
+                        : 1 - Math.pow(-2 * zoomProgress + 2, 2) / 2;
+                    
+                    scale = 1 + (followZoom - 1) * easedZoom;
+                    
+                    droneX = startLocation.x;
+                    droneY = startLocation.y;
+                    
+                    const m = cameraMatrixForDrone(droneX + anchor.x, droneY + anchor.y, scale);
+                    cinematicMapWrapper.style.transform = `matrix(${scale}, 0, 0, ${scale}, ${m.e}, ${m.f})`;
+                    
+                } else if (progress < 0.35) {
+                    // Phase 2: Liftoff - drone rises (20-35%)
+                    scale = followZoom;
+                    
+                    droneX = startLocation.x;
+                    droneY = startLocation.y;
+                    
+                    const m = cameraMatrixForDrone(droneX + anchor.x, droneY + anchor.y, scale);
+                    cinematicMapWrapper.style.transform = `matrix(${scale}, 0, 0, ${scale}, ${m.e}, ${m.f})`;
+                    
+                } else {
+                    // Phase 3: Flight - camera follows drone (35-100%)
+                    const flightProgress = (progress - 0.35) / 0.65;
+                    const easedFlight = flightProgress < 0.5 
+                        ? 2 * flightProgress * flightProgress 
+                        : 1 - Math.pow(-2 * flightProgress + 2, 2) / 2;
+                    
+                    scale = followZoom;
+                    
+                    droneX = startLocation.x + (endLocation.x - startLocation.x) * easedFlight;
+                    droneY = startLocation.y + (endLocation.y - startLocation.y) * easedFlight;
+                    
+                    const m = cameraMatrixForDrone(droneX + anchor.x, droneY + anchor.y, scale);
+                    cinematicMapWrapper.style.transform = `matrix(${scale}, 0, 0, ${scale}, ${m.e}, ${m.f})`;
+                }
+                cinematicDrone.setAttribute('transform', `translate(${droneX}, ${droneY})`);
+                
+                // Fade in drone after 10% progress
+                if (progress > 0.1) {
+                    cinematicDrone.style.opacity = '1';
+                } else {
+                    cinematicDrone.style.opacity = '0';
+                }
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    // Animation complete - pause to show drone at landing site
+                    setTimeout(() => {
+                        onVideoEnd();
+                    }, 3000);  // 3 second pause to digest the landing location
+                }
+            }
+            
+            requestAnimationFrame(animate);
+        }
+
+        // Video ended handler (now animation ended)
+        function onVideoEnd() {
+            state.showingVideo = false;
+            videoModal.classList.remove('active');
+            
+            // Reset animation
+            cinematicMapWrapper.classList.remove('animating');
+            cinematicDrone.classList.remove('animating');
+            cinematicMapWrapper.style.transform = '';
+            cinematicDrone.style.opacity = '1';  // Keep drone visible at end
+            
+            // Delay then show angle selection
+            setTimeout(() => {
+                showAngleSelection();
+            }, 1000);  // 1 second transition delay
+        }
+
+        // ============================================
+        // ZONE VIDEO FEED FUNCTIONS
+        // ============================================
+
+        // Selected build version: VA / VB / VC (chosen on the version screen before intro).
+        let APP_BUILD_VERSION = 'VA';
+
+        // ============================================
+        // SCORING (Bundles + Part selection)
+        // ============================================
+        async function loadScoringBundle(version, angle) {
+            const v = String(version || '').toUpperCase();
+            const a = String(angle || '').toUpperCase();
+            if (!v || !a) return null;
+
+            // Prefer embedded bundle JSON (works even when opened as file://)
+            const embeddedBundleEl = document.getElementById(`scoring-bundle-${v}-${a}`);
+            if (embeddedBundleEl && embeddedBundleEl.textContent && embeddedBundleEl.textContent.trim()) {
+                try {
+                    return JSON.parse(embeddedBundleEl.textContent);
+                } catch (e) {
+                    console.warn('Embedded scoring bundle JSON parse failed for', v, a, e);
+                }
+            }
+
+            // Back-compat: allow a single "key" embed (VA) and wrap it into a bundle shape
+            const embeddedKeyEl = document.getElementById(`scoring-key-${v}`);
+            if (embeddedKeyEl && embeddedKeyEl.textContent && embeddedKeyEl.textContent.trim()) {
+                try {
+                    const k = JSON.parse(embeddedKeyEl.textContent);
+                    if (k && k.schema && String(k.schema).includes('scoring-key')) {
+                        return {
+                            schema: 'sos-ftx-scoring-bundle@1',
+                            version: v,
+                            angle: a,
+                            hasPart2: false,
+                            parts: { '1': k, '2': null },
+                            buildings: k.buildings || {}
+                        };
+                    }
+                } catch (e) {
+                    console.warn('Embedded scoring key JSON parse failed for', v, e);
+                }
+            }
+
+            // Optional external file support (if you later decide to ship bundles as files)
+            try {
+                const res = await fetch(`scoring-bundle-${v}-${a}.json`, { cache: 'no-store' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return await res.json();
+            } catch (e) {
+                console.warn('Failed to load scoring bundle for', v, a, e);
+                return null;
+            }
+        }
+
+        function pickKeyFromBundle(bundle, part) {
+            if (!bundle || !bundle.parts) return null;
+            const p = String(part || '1');
+            return bundle.parts[p] || null;
+        }
+
+        let ACTIVE_SCORING_BUNDLE = null;
+        let ACTIVE_SCORING_KEY = null; // currently selected part key (Part 1 / Part 2)
+
+        // Prompt timestamps for "Continue drone usage?" (seconds into the zone video)
+        const PART2_TRIGGER_SECONDS = {
+            VA: { A: null, B: 286, C: 360 }, // B: 4:46, C: 6:00 (A: none)
+            VB: { A: 447, B: 424, C: 455 },  // A: 7:27, B: 7:04, C: 7:35
+            VC: { A: 383, B: 382, C: 380 }   // A: 6:23, B: 6:22, C: 6:20
+        };
+
+        // Zone reconnaissance videos (paths relative to this HTML file).
+        // Example on disk: DroneFTX2/VID/POSA/VAposa.mp4  →  src="VID/POSA/VAposa.mp4"
+        const ZONE_FEED_VIDEOS = {
+            VA: {
+                A: 'VID/POSA/VAposa.mp4',
+                B: 'VID/POSB/VAposb.mp4',
+                C: 'VID/POSC/VAposc.mp4'
+            },
+            VB: {
+                A: 'VID/POSA/VBposa.mp4',
+                B: 'VID/POSB/VBposb.mp4',
+                C: 'VID/POSC/VBposc.mp4'
+            },
+            VC: {
+                A: 'VID/POSA/VCposa.mp4',
+                B: 'VID/POSB/VCposb.mp4',
+                C: 'VID/POSC/VCposc.mp4'
+            }
+        };
+
+        function applyZoneFeedVideoForSelection() {
+            const key = state.selectedAngle;
+            const table = ZONE_FEED_VIDEOS[APP_BUILD_VERSION];
+            const rel = table && table[key];
+            const sourceEl = zoneDroneVideo.querySelector('source');
+            if (!rel) {
+                console.warn('No zone feed video configured for', APP_BUILD_VERSION, key);
+                return;
+            }
+
+            // Per-position audio tuning (ex: make Position C very quiet)
+            // Volume range: 0.0 (mute) .. 1.0 (full)
+            zoneDroneVideo.volume = (APP_BUILD_VERSION === 'VA' && key === 'C') ? 0.12 : 1.0;
+
+            if (sourceEl) {
+                sourceEl.setAttribute('src', rel);
+            } else {
+                zoneDroneVideo.src = rel;
+            }
+            zoneDroneVideo.load();
+        }
+
+        // ============================================
+        // VIDEO MAGNIFIER (hover zoom) - zone video
+        // ============================================
+        const MAGNIFIER = {
+            enabled: true,
+            zoom: 2.6,          // 1.0 = no zoom
+            radiusPx: 90,       // half of CSS width/height
+            offsetPx: 18        // distance from cursor so it doesn't cover the focal point
+        };
+
+        let magnifierActive = false;
+        let magnifierRaf = null;
+        let lastMagnifierClient = { x: 0, y: 0 };
+
+        const magnifierCtx = zoneVideoMagnifierCanvas?.getContext('2d', { alpha: false });
+        function setMagnifierVisible(visible) {
+            if (!zoneVideoMagnifier) return;
+            zoneVideoMagnifier.style.display = visible ? 'block' : 'none';
+        }
+
+        function stopMagnifierLoop() {
+            if (magnifierRaf) cancelAnimationFrame(magnifierRaf);
+            magnifierRaf = null;
+        }
+
+        function ensureMagnifierCanvasSize() {
+            if (!zoneVideoMagnifierCanvas) return;
+            const dpr = window.devicePixelRatio || 1;
+            const size = MAGNIFIER.radiusPx * 2;
+            const w = Math.round(size * dpr);
+            const h = Math.round(size * dpr);
+            if (zoneVideoMagnifierCanvas.width !== w || zoneVideoMagnifierCanvas.height !== h) {
+                zoneVideoMagnifierCanvas.width = w;
+                zoneVideoMagnifierCanvas.height = h;
+            }
+        }
+
+        function updateMagnifierPosition(clientX, clientY) {
+            if (!zoneVideoMagnifier) return;
+            const rect = zoneDroneVideo.getBoundingClientRect();
+
+            // Place magnifier slightly away from cursor, clamp inside container
+            const desiredX = clientX + MAGNIFIER.offsetPx;
+            const desiredY = clientY + MAGNIFIER.offsetPx;
+            const size = MAGNIFIER.radiusPx * 2;
+
+            const left = Math.max(rect.left, Math.min(rect.right - size, desiredX - MAGNIFIER.radiusPx));
+            const top = Math.max(rect.top, Math.min(rect.bottom - size, desiredY - MAGNIFIER.radiusPx));
+
+            // Convert to container-local coords (video is inside .video-container)
+            const containerRect = zoneDroneVideo.closest('.video-container')?.getBoundingClientRect() || rect;
+            zoneVideoMagnifier.style.left = `${left - containerRect.left}px`;
+            zoneVideoMagnifier.style.top = `${top - containerRect.top}px`;
+        }
+
+        function drawMagnifierFrame(clientX, clientY) {
+            if (!MAGNIFIER.enabled || !magnifierCtx) return;
+            if (!zoneDroneVideo || zoneDroneVideo.readyState < 2) return; // no frame available yet
+
+            const rect = zoneDroneVideo.getBoundingClientRect();
+            const inside =
+                clientX >= rect.left && clientX <= rect.right &&
+                clientY >= rect.top && clientY <= rect.bottom;
+            if (!inside) return;
+
+            // Map cursor to normalized coords in displayed video
+            const nx = (clientX - rect.left) / rect.width;
+            const ny = (clientY - rect.top) / rect.height;
+
+            // Determine source crop in *video pixel* space
+            const vw = zoneDroneVideo.videoWidth || 0;
+            const vh = zoneDroneVideo.videoHeight || 0;
+            if (!vw || !vh) return;
+
+            const cx = nx * vw;
+            const cy = ny * vh;
+
+            ensureMagnifierCanvasSize();
+            const dpr = window.devicePixelRatio || 1;
+            const outSize = MAGNIFIER.radiusPx * 2 * dpr;
+
+            const srcW = (outSize / MAGNIFIER.zoom);
+            const srcH = (outSize / MAGNIFIER.zoom);
+            const sx = Math.max(0, Math.min(vw - srcW, cx - srcW / 2));
+            const sy = Math.max(0, Math.min(vh - srcH, cy - srcH / 2));
+
+            magnifierCtx.imageSmoothingEnabled = true;
+            magnifierCtx.clearRect(0, 0, zoneVideoMagnifierCanvas.width, zoneVideoMagnifierCanvas.height);
+            magnifierCtx.drawImage(
+                zoneDroneVideo,
+                sx, sy, srcW, srcH,
+                0, 0, zoneVideoMagnifierCanvas.width, zoneVideoMagnifierCanvas.height
+            );
+
+            // Crosshair dot at center
+            magnifierCtx.fillStyle = 'rgba(0, 255, 0, 0.9)';
+            magnifierCtx.beginPath();
+            magnifierCtx.arc(zoneVideoMagnifierCanvas.width / 2, zoneVideoMagnifierCanvas.height / 2, 3 * dpr, 0, Math.PI * 2);
+            magnifierCtx.fill();
+        }
+
+        function magnifierLoop() {
+            if (!magnifierActive) return;
+            drawMagnifierFrame(lastMagnifierClient.x, lastMagnifierClient.y);
+            magnifierRaf = requestAnimationFrame(magnifierLoop);
+        }
+
+        function startMagnifierLoop() {
+            stopMagnifierLoop();
+            magnifierActive = true;
+            magnifierRaf = requestAnimationFrame(magnifierLoop);
+        }
+
+        // Show zone video modal
+        function showZoneVideoModal() {
+            state.showingVideo = true;
+            state.zoneVideoPromptShown = false;  // Reset prompt state
+            state.testPart = 1; // Reset to Part 1 at video start
+            zoneVideoModal.classList.add('active');
+            continuePrompt.classList.remove('active');  // Hide prompt initially
+            
+            // Update position info based on selected angle
+            zoneVideoInfo.textContent = `POSITION: ${state.selectedAngle} | ALT: 45ft | SPD: 12kts`;
+
+            applyZoneFeedVideoForSelection();
+            
+            // Reset video + optional start offset
+            const startOffsetSeconds = (APP_BUILD_VERSION === 'VA' && String(state.selectedAngle || '').toUpperCase() === 'C') ? 5 : 0;
+            zoneDroneVideo.currentTime = 0;
+            zoneDroneVideo.playbackRate = 1.0;
+
+            if (startOffsetSeconds > 0) {
+                const seekToOffset = () => {
+                    try {
+                        const dur = Number(zoneDroneVideo.duration);
+                        const safe = Number.isFinite(dur) ? Math.min(startOffsetSeconds, Math.max(0, dur - 0.25)) : startOffsetSeconds;
+                        zoneDroneVideo.currentTime = safe;
+                    } catch (_) {
+                        /* ignore seek failures */
+                    }
+                };
+                if (zoneDroneVideo.readyState >= 1) {
+                    seekToOffset();
+                } else {
+                    zoneDroneVideo.addEventListener('loadedmetadata', seekToOffset, { once: true });
+                }
+            }
+            
+            // Start video after brief delay
+            setTimeout(() => {
+                zoneDroneVideo.play().catch(err => {
+                    console.log('Zone video autoplay blocked, showing anyway');
+                });
+            }, 500);
+        }
+
+        // Update zone video timestamp display
+        function updateZoneVideoTimestamp() {
+            if (!state.showingVideo) return;
+            
+            const currentTime = zoneDroneVideo.currentTime;
+            const hours = Math.floor(currentTime / 3600);
+            const minutes = Math.floor((currentTime % 3600) / 60);
+            const seconds = Math.floor(currentTime % 60);
+            
+            zoneVideoTimestamp.textContent = 
+                String(hours).padStart(2, '0') + ':' +
+                String(minutes).padStart(2, '0') + ':' +
+                String(seconds).padStart(2, '0');
+            
+            // Part 2 prompt timing: per-version+angle timestamp (seconds)
+            const v = String(APP_BUILD_VERSION || '').toUpperCase();
+            const a = String(state.selectedAngle || '').toUpperCase();
+            const trigger = PART2_TRIGGER_SECONDS?.[v]?.[a];
+            if (Number.isFinite(trigger) && trigger !== null) {
+                if (currentTime >= trigger && !state.zoneVideoPromptShown) {
+                    state.zoneVideoPromptShown = true;
+                    state.testPart = 1; // default to Part 1 unless they explicitly continue
+                    zoneDroneVideo.pause();
+                    continuePrompt.classList.add('active');
+                }
+            }
+        }
+
+        // Zone video ended handler
+        function onZoneVideoEnd() {
+            state.showingVideo = false;
+            zoneVideoModal.classList.remove('active');
+            
+            console.log('Zone video ended - mission complete');
+            // Immediately transition to terminal-style student test
+            showStudentTestTerminal();
+        }
+
+        // ============================================
+        // ANGLE SELECTION FUNCTIONS
+        // ============================================
+
+        const anglePromptContent = `Select your preferred viewing angle to begin reconnaissance.
+
+Choose the approach direction that will give your team the best tactical advantage for locating the suspect.`;
+
+        async function showAngleSelection() {
+            state.currentScreen = 'angle-selection';
+            angleSelectionScreen.classList.add('active');
+            
+            // Initialize zone positions on the map
+            initializeZones();
+            
+            // Type out the prompt text
+            await typeAnglePrompt(anglePromptContent);
+            
+            // Focus the input
+            angleInput.focus();
+        }
+
+        // ============================================
+        // VERSION SELECTION (before intro)
+        // ============================================
+        async function applySelectedBuildVersion(v) {
+            APP_BUILD_VERSION = String(v || 'VA').toUpperCase();
+            // Bundle is loaded after the user locks an angle (because bundles are per angle).
+            ACTIVE_SCORING_BUNDLE = null;
+            ACTIVE_SCORING_KEY = null;
+
+            // Visual selection
+            versionButtons.forEach(btn => {
+                btn.classList.toggle('selected', btn.dataset.version === APP_BUILD_VERSION);
+            });
+
+            // Move to intro screen (SOS logo) — then Spacebar begins the exercise.
+            if (versionScreen) {
+                versionScreen.classList.remove('active');
+                versionScreen.setAttribute('aria-hidden', 'true');
+            }
+            homeScreen.style.display = 'flex';
+            state.currentScreen = 'home';
+        }
+
+        // Wire buttons
+        versionButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                applySelectedBuildVersion(btn.dataset.version);
+            });
+        });
+
+        async function typeAnglePrompt(text, speed = 25) {
+            state.isTyping = true;
+            state.skipRequested = false;
+            anglePromptText.innerHTML = '<span class="cursor"></span>';
+            
+            let displayedText = '';
+            
+            for (let i = 0; i < text.length; i++) {
+                // Check for skip request (secret admin fast-forward)
+                if (state.skipRequested) {
+                    displayedText = text;
+                    break;
+                }
+                
+                displayedText += text[i];
+                anglePromptText.innerHTML = displayedText + '<span class="cursor"></span>';
+                
+                let delay = speed;
+                if (text[i] === '.' || text[i] === '!' || text[i] === '?') {
+                    delay = speed * 4;
+                } else if (text[i] === ',') {
+                    delay = speed * 2;
+                } else if (text[i] === '\n') {
+                    delay = speed * 3;
+                }
+                
+                await sleep(delay);
+            }
+            
+            anglePromptText.innerHTML = displayedText;
+            state.isTyping = false;
+            state.skipRequested = false;
+        }
+
+        // Drone position descriptions
+        const positionData = {
+            'A': {
+                title: 'DRONE POSITION A',
+                description: 'This is the closest position providing the most detail, however drone noise will be very noticeable. This will likely be a short window of opportunity.',
+                stats: {
+                    detail: { value: 'HIGH', level: 'high' },
+                    noise: { value: 'VERY NOTICEABLE', level: 'high' },
+                    opportunity: { value: 'SHORT', level: 'high' }
+                }
+            },
+            'B': {
+                title: 'DRONE POSITION B',
+                description: 'This is the widest angle providing less detail than position A, however drone noise is only moderately noticeable. This will provide a longer window of opportunity.',
+                stats: {
+                    detail: { value: 'MEDIUM', level: 'medium' },
+                    noise: { value: 'MODERATE', level: 'medium' },
+                    opportunity: { value: 'LONGER', level: 'medium' }
+                }
+            },
+            'C': {
+                title: 'DRONE POSITION C',
+                description: 'This is the furthest away providing less details, however the drone noise should not be detected and will provide the longest window of opportunity.',
+                stats: {
+                    detail: { value: 'LOW', level: 'low' },
+                    noise: { value: 'UNDETECTABLE', level: 'low' },
+                    opportunity: { value: 'LONGEST', level: 'low' }
+                }
+            }
+        };
+
+        // Drone zone positions (can be edited with zone-editor.html)
+        // Drone Zone Positions (percentages of map)
+        const droneZones = {
+            A: { cx: 86.1, cy: 20.1, rx: 5.3, ry: 6.0 },
+            B: { cx: 40.7, cy: 11.2, rx: 5.3, ry: 6.2 },
+            C: { cx: 11.5, cy: 78.5, rx: 6.1, ry: 6.6 }
+        };
+
+        // Environmental Effects (Point-based)
+        const environmentalEffects = [
+            { type: "smoke", x: 63.1, y: 23.3, size: 15.0 },
+            { type: "smoke", x: 64.7, y: 14.2, size: 30.0 },
+            { type: "smoke", x: 61.7, y: 18.2, size: 22.0 }
+        ];
+
+        // Highlight zone on map when position is selected
+        function highlightZone(positionKey) {
+            // Remove highlight from all zones
+            ['A', 'B', 'C'].forEach(key => {
+                const zone = document.getElementById(`map-zone-${key.toLowerCase()}`);
+                if (zone) {
+                    zone.classList.remove('highlighted');
+                }
+            });
+            
+            // Add highlight to selected zone
+            if (positionKey) {
+                const selectedZone = document.getElementById(`map-zone-${positionKey.toLowerCase()}`);
+                if (selectedZone) {
+                    selectedZone.classList.add('highlighted');
+                }
+            }
+        }
+
+        // Initialize zones on the map
+        // PNG sequence animation data
+        const pngSequences = {
+            fire: {
+                folder: 'footagecrate-ground-fire-10',
+                startFrame: 104,
+                endFrame: 201,
+                fps: 30
+            },
+            smoke: {
+                folder: 'FootageCrate-Smoke_Plume_Accent_2',
+                startFrame: 38,
+                // Folder currently contains frame_001..frame_119
+                endFrame: 119,
+                fps: 30
+            }
+        };
+        
+        let envEffectAnimations = {};
+
+        function initializeZones() {
+            for (const [key, zone] of Object.entries(droneZones)) {
+                const zoneEl = document.getElementById(`map-zone-${key.toLowerCase()}`);
+                const labelEl = zoneEl?.nextElementSibling;
+                
+                if (zoneEl) {
+                    zoneEl.setAttribute('cx', zone.cx);
+                    zoneEl.setAttribute('cy', zone.cy);
+                    zoneEl.setAttribute('rx', zone.rx);
+                    zoneEl.setAttribute('ry', zone.ry);
+                }
+                
+                if (labelEl && labelEl.tagName === 'text') {
+                    labelEl.setAttribute('x', zone.cx);
+                    labelEl.setAttribute('y', zone.cy);
+                }
+            }
+            
+            // Initialize environmental effects
+            initializeEnvironmentalEffects();
+        }
+
+        function initializeEnvironmentalEffects() {
+            const effectsGroup = document.getElementById('environmental-effects-group');
+            if (!effectsGroup) return;
+            
+            // Clear existing effects
+            effectsGroup.innerHTML = '';
+            
+            // Stop any existing animations
+            Object.keys(envEffectAnimations).forEach(id => {
+                clearInterval(envEffectAnimations[id]);
+            });
+            envEffectAnimations = {};
+            
+            // Render each environmental effect
+            environmentalEffects.forEach((effect, index) => {
+                const effectId = `env-effect-${index}`;
+                const element = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+                element.setAttribute('class', 'env-effect');
+                element.setAttribute('id', effectId);
+                
+                const seq = pngSequences[effect.type];
+                const width = effect.size * 2;
+                const height = effect.size * 2;
+                
+                // Set initial frame
+                const paddedFrame = String(seq.startFrame).padStart(3, '0');
+                element.setAttribute('href', `${seq.folder}/frame_${paddedFrame}.png`);
+                
+                element.setAttribute('x', effect.x - width / 2);
+                element.setAttribute('y', effect.y - height / 2);
+                element.setAttribute('width', width);
+                element.setAttribute('height', height);
+                
+                effectsGroup.appendChild(element);
+                
+                // Start PNG sequence animation
+                startEnvEffectAnimation(effectId, effect.type);
+            });
+        }
+
+        function startEnvEffectAnimation(effectId, effectType) {
+            const seq = pngSequences[effectType];
+            let currentFrame = seq.startFrame;
+            const frameInterval = 1000 / seq.fps; // ms per frame
+            
+            envEffectAnimations[effectId] = setInterval(() => {
+                const element = document.getElementById(effectId);
+                if (!element) {
+                    clearInterval(envEffectAnimations[effectId]);
+                    delete envEffectAnimations[effectId];
+                    return;
+                }
+                
+                const frameToLoad = currentFrame;
+                const paddedFrame = String(frameToLoad).padStart(3, '0');
+                const nextHref = `${seq.folder}/frame_${paddedFrame}.png`;
+
+                // Preload the frame before swapping href to avoid broken-image flicker
+                const preloader = new Image();
+                preloader.onload = () => {
+                    const liveEl = document.getElementById(effectId);
+                    if (liveEl) {
+                        liveEl.setAttribute('href', nextHref);
+                    }
+                };
+                preloader.onerror = () => {
+                    // Keep the previous valid frame if this one is missing/can't load
+                };
+                preloader.src = nextHref;
+                
+                currentFrame++;
+                if (currentFrame > seq.endFrame) {
+                    currentFrame = seq.startFrame; // Loop back
+                }
+            }, frameInterval);
+        }
+
+        function selectAngle(position) {
+            if (state.isTyping) return;
+            
+            // If already locked, don't allow changes
+            if (state.positionLocked) return;
+            
+            const positionKey = String(position).toUpperCase();
+            const data = positionData[positionKey];
+            
+            if (!data) return;
+            
+            // Select (but don't lock) the position
+            state.selectedAngle = positionKey;
+            
+            // Visual feedback on buttons - highlight selected
+            angleOptions.forEach(opt => {
+                opt.style.opacity = '0.7';
+                opt.style.background = '';
+                opt.style.color = '';
+                opt.style.boxShadow = '';
+                if (opt.dataset.angle === positionKey) {
+                    opt.style.background = '#00ff00';
+                    opt.style.color = '#0a0a0a';
+                    opt.style.opacity = '1';
+                    opt.style.boxShadow = '0 0 20px rgba(0, 255, 0, 0.6)';
+                }
+            });
+            
+            // Highlight the corresponding zone on the map
+            highlightZone(positionKey);
+            
+            // Display position details with prompt to confirm
+            const detailsDiv = document.getElementById('position-details');
+            detailsDiv.innerHTML = `
+                <div class="position-title">${data.title}</div>
+                <div class="position-description">${data.description}</div>
+                <div class="position-stat">
+                    <div class="stat-item">
+                        <span class="stat-label">Detail Level:</span>
+                        <span class="stat-value ${data.stats.detail.level}">${data.stats.detail.value}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Drone Noise:</span>
+                        <span class="stat-value ${data.stats.noise.level}">${data.stats.noise.value}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Window of Opportunity:</span>
+                        <span class="stat-value ${data.stats.opportunity.level}">${data.stats.opportunity.value}</span>
+                    </div>
+                </div>
+                <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #ffaa00; color: #ffaa00; text-align: center; animation: blink 1s step-end infinite;">
+                    [TYPE POSITION IN BOX BELOW AND PRESS ENTER TO CONFIRM]
+                </div>
+            `;
+            detailsDiv.classList.add('active');
+            
+            console.log('Selected position:', positionKey);
+        }
+
+        // Lock in the current selection and proceed
+        function lockSelection() {
+            if (!state.selectedAngle || state.positionLocked) return;
+            
+            state.positionLocked = true;
+            const data = positionData[state.selectedAngle];
+            
+            // Update visual to show locked state
+            angleOptions.forEach(opt => {
+                opt.style.cursor = 'not-allowed';
+                opt.disabled = true;
+                if (opt.dataset.angle !== state.selectedAngle) {
+                    opt.style.opacity = '0.3';
+                }
+            });
+            
+            // Disable input
+            angleInput.disabled = true;
+            angleInput.style.opacity = '0.5';
+            
+            // Update details to show confirmed
+            const detailsDiv = document.getElementById('position-details');
+            detailsDiv.innerHTML = `
+                <div class="position-title">${data.title} - CONFIRMED</div>
+                <div class="position-description">${data.description}</div>
+                <div class="position-stat">
+                    <div class="stat-item">
+                        <span class="stat-label">Detail Level:</span>
+                        <span class="stat-value ${data.stats.detail.level}">${data.stats.detail.value}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Drone Noise:</span>
+                        <span class="stat-value ${data.stats.noise.level}">${data.stats.noise.value}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Window of Opportunity:</span>
+                        <span class="stat-value ${data.stats.opportunity.level}">${data.stats.opportunity.value}</span>
+                    </div>
+                </div>
+                <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #00ff00; color: #00ff00; text-align: center;">
+                    *** POSITION CONFIRMED - PROCEEDING TO RECONNAISSANCE ***
+                </div>
+            `;
+            
+            console.log('CONFIRMED position:', state.selectedAngle);
+            
+            // Proceed to show zone video feed after a brief delay
+            setTimeout(async () => {
+                // Clean up environmental effect animations
+                Object.keys(envEffectAnimations).forEach(id => {
+                    clearInterval(envEffectAnimations[id]);
+                });
+                envEffectAnimations = {};
+
+                // Load the scoring bundle for this version+angle (Part 1 default)
+                try {
+                    ACTIVE_SCORING_BUNDLE = await loadScoringBundle(APP_BUILD_VERSION, state.selectedAngle);
+                    ACTIVE_SCORING_KEY = pickKeyFromBundle(ACTIVE_SCORING_BUNDLE, 1);
+                } catch (_) {
+                    ACTIVE_SCORING_BUNDLE = null;
+                    ACTIVE_SCORING_KEY = null;
+                }
+                
+                // Hide angle selection screen
+                angleSelectionScreen.classList.remove('active');
+                // Show the zone video feed
+                showZoneVideoModal();
+            }, 2000);
+        }
+
+        // Process current section
+        async function processSection() {
+            if (state.currentSection >= intelContent.length) {
+                // All sections complete - go directly to video
+                removeAllContinuePrompts();
+                stopNarration();
+                showVideoModal();
+                return;
+            }
+
+            const content = intelContent[state.currentSection];
+            const sectionElement = document.getElementById(`section-${content.section}`);
+            const isLastSection = (state.currentSection === intelContent.length - 1);
+            
+            // Show section
+            sectionElement.classList.add('active', 'fade-in');
+
+            // Start narration for this section (mp3 1-7)
+            playNarrationForSection(content.section);
+            
+            // Type the text
+            await typeText(`text-${content.section}`, content.text);
+            
+            // Show map if needed
+            if (content.showMap) {
+                await sleep(500);
+                showMap();
+            }
+            
+            // Show continue prompt inline after the text
+            state.canContinue = true;
+            const textElement = document.getElementById(`text-${content.section}`);
+            
+            // Show different prompt for last section
+            if (isLastSection) {
+                appendContinuePrompt(textElement, '[INTEL BRIEFING COMPLETE - PRESS SPACEBAR TO INITIALIZE DRONE FEED...]');
+            } else {
+                appendContinuePrompt(textElement, '[PRESS SPACEBAR TO CONTINUE]');
+            }
+        }
+
+        // Append continue prompt inline after text
+        function appendContinuePrompt(element, message) {
+            // Remove any existing prompts
+            removeAllContinuePrompts();
+            
+            // Create and append inline prompt
+            const promptSpan = document.createElement('div');
+            promptSpan.className = 'continue-prompt-inline';
+            promptSpan.textContent = message;
+            element.appendChild(promptSpan);
+            
+            // Scroll to show the prompt
+            promptSpan.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // Remove all continue prompts
+        function removeAllContinuePrompts() {
+            const prompts = document.querySelectorAll('.continue-prompt-inline');
+            prompts.forEach(p => p.remove());
+        }
+
+        // Handle spacebar press
+        function handleSpacebar() {
+            // If on version screen, Space does nothing (must click a version).
+            if (state.currentScreen === 'version') return;
+
+            if (state.currentScreen === 'home') {
+                // Transition to intel screen
+                homeScreen.style.display = 'none';
+                intelScreen.style.display = 'block';
+                state.currentScreen = 'intel';
+                
+                // Start first section after brief delay
+                setTimeout(() => {
+                    processSection();
+                }, 500);
+            } else if (state.currentScreen === 'intel') {
+                if (state.showingVideo) {
+                    // Don't allow skipping during video
+                    return;
+                }
+                
+                if (state.showingMap) {
+                    // Hide map first
+                    hideMap();
+                    return;
+                }
+                
+                if (state.canContinue && !state.isTyping) {
+                    // Move to next section (or video if all sections complete)
+                    state.canContinue = false;
+                    removeAllContinuePrompts();
+                    state.currentSection++;
+                    stopNarration();
+                    
+                    // Small delay before next section/video
+                    setTimeout(() => {
+                        processSection();
+                    }, 300);
+                }
+            }
+        }
+
+        // Secret admin fast-forward function
+        function handleFastForward() {
+            // Skip typing animation
+            if (state.isTyping) {
+                state.skipRequested = true;
+                return;
+            }
+            
+            // Skip cinematic drone animation immediately
+            if (videoModal && videoModal.classList.contains('active')) {
+                onVideoEnd();
+                return;
+            }
+
+            // Skip video - jump to end
+            if (state.showingVideo && droneVideo) {
+                droneVideo.currentTime = droneVideo.duration - 0.1;
+                return;
+            }
+            
+            // Skip map display
+            if (state.showingMap) {
+                hideMap();
+                return;
+            }
+            
+            // If can continue, auto-advance
+            if (state.canContinue) {
+                handleSpacebar();
+            }
+        }
+
+        // Event Listeners
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                handleSpacebar();
+            }
+            
+            // Secret admin fast-forward (F key)
+            if (e.key === 'f' || e.key === 'F') {
+                // Don't trigger if typing in input field
+                if (document.activeElement.tagName !== 'INPUT') {
+                    e.preventDefault();
+                    handleFastForward();
+                }
+            }
+        });
+
+        // Click on map overlay to close
+        mapOverlay.addEventListener('click', hideMap);
+        mapContainer.addEventListener('click', hideMap);
+
+        // Zone video event listeners
+        zoneDroneVideo.addEventListener('ended', onZoneVideoEnd);
+        zoneDroneVideo.addEventListener('timeupdate', updateZoneVideoTimestamp);
+
+        // Magnifier interactions (hover over the zone video)
+        zoneDroneVideo.addEventListener('mouseenter', (e) => {
+            if (!MAGNIFIER.enabled) return;
+            setMagnifierVisible(true);
+            lastMagnifierClient.x = e.clientX;
+            lastMagnifierClient.y = e.clientY;
+            updateMagnifierPosition(e.clientX, e.clientY);
+            startMagnifierLoop();
+        });
+
+        zoneDroneVideo.addEventListener('mousemove', (e) => {
+            if (!MAGNIFIER.enabled) return;
+            lastMagnifierClient.x = e.clientX;
+            lastMagnifierClient.y = e.clientY;
+            updateMagnifierPosition(e.clientX, e.clientY);
+        });
+
+        zoneDroneVideo.addEventListener('mouseleave', () => {
+            magnifierActive = false;
+            stopMagnifierLoop();
+            setMagnifierVisible(false);
+        });
+
+        // Do NOT allow clicking outside to exit the video.
+        // Exiting is restricted to hidden admin controls (ESC).
+
+        // Continue drone usage - YES button
+        continueYesBtn.addEventListener('click', () => {
+            continuePrompt.classList.remove('active');
+            state.testPart = 2;
+            zoneDroneVideo.play();
+        });
+
+        // Continue drone usage - NO button
+        continueNoBtn.addEventListener('click', () => {
+            continuePrompt.classList.remove('active');
+            state.testPart = 1;
+            state.showingVideo = false;
+            zoneVideoModal.classList.remove('active');
+            zoneDroneVideo.pause();
+            zoneDroneVideo.currentTime = 0;
+            console.log('Drone usage terminated by user');
+            showStudentTestTerminal();
+        });
+
+        // Keyboard shortcuts for prompt (Y/N)
+        document.addEventListener('keydown', (e) => {
+            // Only respond if the prompt is visible
+            if (continuePrompt.classList.contains('active')) {
+                if (e.key === 'y' || e.key === 'Y') {
+                    continueYesBtn.click();
+                } else if (e.key === 'n' || e.key === 'N') {
+                    continueNoBtn.click();
+                }
+            }
+        });
+
+        // Hidden playback controls during zone video:
+        // - Right Arrow: increase speed up to 5x
+        // - Left Arrow: decrease speed back to 1x; if already 1x, jump backwards
+        document.addEventListener('keydown', (e) => {
+            if (!state.showingVideo) return;
+            if (!zoneVideoModal.classList.contains('active')) return;
+            if (continuePrompt.classList.contains('active')) return; // don't fight the prompt
+            if (e.altKey || e.ctrlKey || e.metaKey) return;
+            if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+
+            const RATES = [1, 2, 3, 4, 5];
+            const cur = Number(zoneDroneVideo.playbackRate) || 1;
+            const idx = Math.max(0, RATES.indexOf(cur));
+
+            if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                const next = RATES[Math.min(RATES.length - 1, idx + 1)];
+                zoneDroneVideo.playbackRate = next;
+                return;
+            }
+
+            if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                if (cur <= 1.01) {
+                    zoneDroneVideo.currentTime = Math.max(0, (zoneDroneVideo.currentTime || 0) - 5);
+                    return;
+                }
+                const prev = RATES[Math.max(0, idx - 1)];
+                zoneDroneVideo.playbackRate = prev;
+            }
+        });
+
+        // Hidden admin exit: ESC closes active video modal(s)
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+
+            // After test scoring: ESC restarts the experience from the home screen
+            if (testProcessingModal.classList.contains('active')) {
+                e.preventDefault();
+                restartAppToBeginning();
+                return;
+            }
+
+            if (processingModal.classList.contains('active')) {
+                e.preventDefault();
+                restartAppToBeginning();
+                return;
+            }
+
+            // Close zone video modal if active
+            if (zoneVideoModal.classList.contains('active')) {
+                e.preventDefault();
+                state.showingVideo = false;
+                continuePrompt.classList.remove('active');
+                zoneVideoModal.classList.remove('active');
+                zoneDroneVideo.pause();
+                zoneDroneVideo.currentTime = 0;
+                showStudentTestTerminal();
+                return;
+            }
+
+            // Close cinematic drone feed if active
+            if (videoModal.classList.contains('active')) {
+                e.preventDefault();
+                state.showingVideo = false;
+                videoModal.classList.remove('active');
+
+                // Reset cinematic animation state cleanly
+                cinematicMapWrapper.classList.remove('animating');
+                cinematicDrone.classList.remove('animating');
+                cinematicMapWrapper.style.transform = '';
+                cinematicDrone.style.opacity = '0';
+                return;
+            }
+        });
+
+        // Angle selection button clicks - selects position (can change)
+        angleOptions.forEach(button => {
+            button.addEventListener('click', () => {
+                const position = button.dataset.angle;
+                selectAngle(position);
+            });
+        });
+
+        // Angle input handling - ONLY way to finalize selection
+        angleInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !state.positionLocked) {
+                const value = e.target.value.toUpperCase();
+                if (['A', 'B', 'C'].includes(value)) {
+                    // Select this position and lock it in
+                    selectAngle(value);
+                    lockSelection();
+                }
+                // If invalid input, do nothing - must type A, B, or C
+            }
+        });
+        
+        // Show preview when typing in input
+        angleInput.addEventListener('input', (e) => {
+            if (state.positionLocked) return;
+            const value = e.target.value.toUpperCase();
+            if (['A', 'B', 'C'].includes(value)) {
+                selectAngle(value);
+            }
+        });
+
+        // A, B, C key shortcuts for position preview only (not in input field)
+        document.addEventListener('keydown', (e) => {
+            if (state.currentScreen === 'angle-selection' && !state.isTyping && !state.positionLocked) {
+                // Don't trigger if typing in input field
+                if (document.activeElement.tagName !== 'INPUT') {
+                    const key = e.key.toUpperCase();
+                    if (['A', 'B', 'C'].includes(key)) {
+                        selectAngle(key);
+                    }
+                    // Note: Enter outside input box does NOT confirm - must use input box
+                }
+            }
+        });
+
+        // Screen flicker effect occasionally
+        setInterval(() => {
+            if (Math.random() < 0.1) {
+                document.body.classList.add('screen-flicker');
+                setTimeout(() => {
+                    document.body.classList.remove('screen-flicker');
+                }, 150);
+            }
+        }, 5000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drone Animation Editor - SOS FTX</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #1a1a2e;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #00ff00;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        .instructions {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .instructions span {
+            color: #ffaa00;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .map-section {
+            flex: 1;
+        }
+
+        .controls-section {
+            width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .map-container {
+            position: relative;
+            display: inline-block;
+            border: 3px solid #00ff00;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+            cursor: crosshair;
+            overflow: hidden;
+        }
+
+        .map-wrapper {
+            position: relative;
+            transition: transform 0.3s ease-out;
+            transform-origin: center center;
+        }
+
+        .map-wrapper.animating {
+            transition: none;
+        }
+
+        .map-container img {
+            display: block;
+            max-width: 100%;
+            max-height: 75vh;
+        }
+
+        .map-container svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        /* Location markers */
+        .location-marker {
+            pointer-events: all;
+            cursor: move;
+        }
+
+        .start-marker {
+            fill: #00ff00;
+            stroke: #ffffff;
+            stroke-width: 0.3;
+            filter: drop-shadow(0 0 1px rgba(0, 255, 0, 0.8));
+        }
+
+        .start-marker:hover {
+            fill: #00ffff;
+        }
+
+        .end-marker {
+            fill: #ff6600;
+            stroke: #ffffff;
+            stroke-width: 0.3;
+            filter: drop-shadow(0 0 1px rgba(255, 102, 0, 0.8));
+        }
+
+        .end-marker:hover {
+            fill: #ffaa00;
+        }
+
+        .marker-label {
+            fill: #ffffff;
+            font-size: 2.5px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            text-anchor: middle;
+            pointer-events: none;
+            filter: drop-shadow(0 0 0.5px rgba(0, 0, 0, 1));
+        }
+
+        /* Flight path line */
+        .flight-line {
+            fill: none;
+            stroke: rgba(255, 170, 0, 0.6);
+            stroke-width: 0.3;
+            stroke-dasharray: 1, 1;
+        }
+
+        /* Animated drone image */
+        .drone-graphic {
+            opacity: 0;
+            pointer-events: none;
+            filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.8));
+        }
+
+        .drone-graphic.animating {
+            opacity: 1;
+        }
+
+        /* Controls */
+        .control-panel {
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .control-panel h3 {
+            color: #ffaa00;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+        }
+
+        .btn {
+            background: #1a3a1a;
+            color: #00ff00;
+            border: 2px solid #00ff00;
+            padding: 10px 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            width: 100%;
+            margin-bottom: 8px;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: #00ff00;
+            color: #0a0a0a;
+        }
+
+        .btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .btn-danger {
+            border-color: #ff4444;
+            color: #ff4444;
+        }
+
+        .btn-danger:hover {
+            background: #ff4444;
+            color: #ffffff;
+        }
+
+        .btn-primary {
+            border-color: #4488ff;
+            color: #4488ff;
+        }
+
+        .btn-primary:hover {
+            background: #4488ff;
+            color: #ffffff;
+        }
+
+        /* Location info */
+        .location-info {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 0.85rem;
+        }
+
+        .location-info .label {
+            color: #888;
+            margin-bottom: 5px;
+        }
+
+        .location-info .coords {
+            color: #00ff00;
+            font-weight: bold;
+        }
+
+        .location-info.empty {
+            color: #666;
+            text-align: center;
+            font-style: italic;
+        }
+
+        /* Code output */
+        .code-output {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 10px;
+            font-size: 0.7rem;
+            max-height: 250px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .copy-notice {
+            color: #00ff00;
+            font-size: 0.8rem;
+            text-align: center;
+            margin-top: 5px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .copy-notice.show {
+            opacity: 1;
+        }
+
+        /* Coordinates display */
+        .coords-display {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ff00;
+            padding: 10px 15px;
+            font-size: 0.9rem;
+            z-index: 100;
+        }
+
+        .coords-display span {
+            color: #ffaa00;
+        }
+
+        /* File input styling */
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            display: block;
+            background: #1a3a1a;
+            color: #00ff00;
+            border: 2px solid #00ff00;
+            padding: 10px 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .file-input-label:hover {
+            background: #00ff00;
+            color: #0a0a0a;
+        }
+
+        .current-image {
+            color: #ffaa00;
+            font-size: 0.75rem;
+            margin-top: 5px;
+            word-break: break-all;
+        }
+
+        /* Slider styling */
+        .slider-container {
+            padding: 5px 0;
+        }
+
+        .slider-container label {
+            display: block;
+            color: #888;
+            font-size: 0.8rem;
+            margin-bottom: 8px;
+        }
+
+        .slider-container input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #0a0a0a;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .slider-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #00ff00;
+            cursor: pointer;
+            border: 2px solid #1a3a1a;
+            box-shadow: 0 0 8px rgba(0, 255, 0, 0.5);
+        }
+
+        .slider-container input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #00ff00;
+            cursor: pointer;
+            border: 2px solid #1a3a1a;
+            box-shadow: 0 0 8px rgba(0, 255, 0, 0.5);
+        }
+
+        .slider-value {
+            color: #00ff00;
+            font-weight: bold;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0a0a0a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00ff00;
+        }
+
+        /* Keyboard shortcuts help */
+        .shortcuts {
+            font-size: 0.75rem;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        .shortcuts kbd {
+            background: #333;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #00ff00;
+        }
+    </style>
+</head>
+<body>
+    <h1>Cinematic Drone Animation Editor</h1>
+    <p class="instructions">
+        <span>Load image</span> → <span>Set TAKEOFF</span> point → <span>Set LANDING</span> zone → <span>Preview</span> film-style sequence
+    </p>
+    <p class="instructions" style="margin-top: 5px; font-size: 0.85rem; color: #ffaa00;">
+        Full shot → Zoom in → Liftoff closeup → Camera follows drone to landing zone
+    </p>
+
+    <div class="container">
+        <div class="map-section">
+            <div class="map-container" id="map-container">
+                <div class="map-wrapper" id="map-wrapper">
+                    <img src="" alt="Map Image" id="map-image" style="display: none;">
+                    <svg id="animation-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <!-- Flight path line -->
+                        <line class="flight-line" id="flight-line" x1="0" y1="0" x2="0" y2="0" style="display: none;"/>
+                        
+                        <!-- Start location marker -->
+                        <g id="start-location" style="display: none;">
+                            <circle class="location-marker start-marker" cx="50" cy="50" r="2"/>
+                            <text class="marker-label" x="50" y="47">TAKEOFF</text>
+                        </g>
+                        
+                        <!-- End location marker -->
+                        <g id="end-location" style="display: none;">
+                            <circle class="location-marker end-marker" cx="50" cy="50" r="2"/>
+                            <text class="marker-label" x="50" y="47">LANDING</text>
+                        </g>
+                        
+                        <!-- Animated drone image -->
+                        <image class="drone-graphic" id="drone-graphic" 
+                               href="drone.png" 
+                               x="-4" y="-2.5" 
+                               width="8" height="5"
+                               transform="translate(0,0)"
+                               opacity="0"/>
+                        </image>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls-section">
+            <div class="control-panel">
+                <h3>1. Load Image</h3>
+                <div class="file-input-wrapper">
+                    <input type="file" id="image-input" accept="image/*">
+                    <label for="image-input" class="file-input-label">📁 Choose Image File</label>
+                </div>
+                <div class="current-image" id="current-image">No image loaded</div>
+            </div>
+
+            <div class="control-panel">
+                <h3>2. Set Locations</h3>
+                <div class="location-info" id="start-info">
+                    <div class="label">🛫 TAKEOFF Location:</div>
+                    <div class="coords" id="start-coords">Click on map to set</div>
+                </div>
+                <div class="location-info" id="end-info">
+                    <div class="label">🛬 LANDING Location:</div>
+                    <div class="coords" id="end-coords">Click on map to set</div>
+                </div>
+                <button class="btn btn-danger" onclick="clearLocations()">✕ Clear Locations</button>
+            </div>
+
+            <div class="control-panel">
+                <h3>3. Cinematic Settings</h3>
+                <div class="slider-container">
+                    <label>Camera Follow Zoom: <span class="slider-value" id="zoom-value">2.0x</span></label>
+                    <input type="range" id="zoom-slider" min="1.5" max="4" step="0.1" value="2" 
+                           oninput="updateZoomValue(this.value)">
+                    <div style="font-size: 0.7rem; color: #888; margin-top: 3px;">
+                        How close camera stays to drone (higher = tighter shot)
+                    </div>
+                </div>
+                <div class="slider-container">
+                    <label>Total Duration: <span class="slider-value" id="duration-value">6s</span></label>
+                    <input type="range" id="duration-slider" min="4" max="15" step="0.5" value="6" 
+                           oninput="updateDurationValue(this.value)">
+                    <div style="font-size: 0.7rem; color: #888; margin-top: 3px;">
+                        20% zoom in, 15% liftoff, 65% flight tracking
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <h3>4. Preview & Export</h3>
+                <button class="btn btn-primary" onclick="previewAnimation()" id="preview-btn" disabled>▶ Preview Full Sequence</button>
+                <button class="btn" onclick="copyCode()" id="copy-btn" disabled>📋 Copy Code</button>
+            </div>
+
+            <div class="control-panel">
+                <h3>Export Code</h3>
+                <div class="code-output" id="code-output">// Load an image and set locations to generate code</div>
+                <p class="copy-notice" id="copy-notice">Copied!</p>
+            </div>
+
+            <div class="shortcuts">
+                <p><kbd>P</kbd> Preview sequence | <kbd>R</kbd> Reset | <kbd>Ctrl+C</kbd> Copy</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="coords-display" id="coords-display">
+        Mouse: <span id="mouse-coords">0, 0</span>
+    </div>
+
+    <script>
+        // State
+        let startLocation = null;
+        let endLocation = null;
+        let isDragging = false;
+        let dragTarget = null;
+        let isAnimating = false;
+        let imageName = '';
+        let zoomLevel = 2.0;
+        let duration = 6;
+
+        // DOM Elements
+        const mapContainer = document.getElementById('map-container');
+        const mapWrapper = document.getElementById('map-wrapper');
+        const mapImage = document.getElementById('map-image');
+        const animationSvg = document.getElementById('animation-svg');
+        const imageInput = document.getElementById('image-input');
+        const currentImageDisplay = document.getElementById('current-image');
+        const startLocationGroup = document.getElementById('start-location');
+        const endLocationGroup = document.getElementById('end-location');
+        const flightLine = document.getElementById('flight-line');
+        const previewDrone = document.getElementById('preview-drone');
+        const mouseCoords = document.getElementById('mouse-coords');
+        const codeOutput = document.getElementById('code-output');
+        const previewBtn = document.getElementById('preview-btn');
+        const copyBtn = document.getElementById('copy-btn');
+
+        // Load image
+        imageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    mapImage.src = event.target.result;
+                    mapImage.style.display = 'block';
+                    imageName = file.name;
+                    currentImageDisplay.textContent = `Loaded: ${imageName}`;
+                    clearLocations();
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Get mouse position as percentage
+        function getMousePercent(e) {
+            const rect = mapImage.getBoundingClientRect();
+            const x = ((e.clientX - rect.left) / rect.width) * 100;
+            const y = ((e.clientY - rect.top) / rect.height) * 100;
+            return {
+                x: Math.max(0, Math.min(100, x)),
+                y: Math.max(0, Math.min(100, y))
+            };
+        }
+
+        // Update display
+        function updateDisplay() {
+            // Update start location
+            if (startLocation) {
+                const startCircle = startLocationGroup.querySelector('circle');
+                const startLabel = startLocationGroup.querySelector('text');
+                startCircle.setAttribute('cx', startLocation.x);
+                startCircle.setAttribute('cy', startLocation.y);
+                startLabel.setAttribute('x', startLocation.x);
+                startLabel.setAttribute('y', startLocation.y - 3);
+                startLocationGroup.style.display = 'block';
+                
+                document.getElementById('start-coords').textContent = 
+                    `[${startLocation.x.toFixed(1)}, ${startLocation.y.toFixed(1)}]`;
+            } else {
+                startLocationGroup.style.display = 'none';
+                document.getElementById('start-coords').textContent = 'Click on map to set';
+            }
+
+            // Update end location
+            if (endLocation) {
+                const endCircle = endLocationGroup.querySelector('circle');
+                const endLabel = endLocationGroup.querySelector('text');
+                endCircle.setAttribute('cx', endLocation.x);
+                endCircle.setAttribute('cy', endLocation.y);
+                endLabel.setAttribute('x', endLocation.x);
+                endLabel.setAttribute('y', endLocation.y - 3);
+                endLocationGroup.style.display = 'block';
+                
+                document.getElementById('end-coords').textContent = 
+                    `[${endLocation.x.toFixed(1)}, ${endLocation.y.toFixed(1)}]`;
+            } else {
+                endLocationGroup.style.display = 'none';
+                document.getElementById('end-coords').textContent = 'Click on map to set';
+            }
+
+            // Update flight line
+            if (startLocation && endLocation) {
+                flightLine.setAttribute('x1', startLocation.x);
+                flightLine.setAttribute('y1', startLocation.y);
+                flightLine.setAttribute('x2', endLocation.x);
+                flightLine.setAttribute('y2', endLocation.y);
+                flightLine.style.display = 'block';
+            } else {
+                flightLine.style.display = 'none';
+            }
+
+            // Enable/disable buttons
+            const canPreview = startLocation && endLocation && imageName;
+            previewBtn.disabled = !canPreview;
+            copyBtn.disabled = !canPreview;
+
+            // Update code output
+            updateCodeOutput();
+        }
+
+        // Update code output
+        function updateCodeOutput() {
+            if (!startLocation || !endLocation || !imageName) {
+                codeOutput.textContent = '// Load an image and set locations to generate code';
+                return;
+            }
+
+            const code = `// Cinematic Drone Animation Configuration
+const droneAnimation = {
+    imageName: "${imageName}",
+    startLocation: { x: ${startLocation.x.toFixed(1)}, y: ${startLocation.y.toFixed(1)} },
+    endLocation: { x: ${endLocation.x.toFixed(1)}, y: ${endLocation.y.toFixed(1)} },
+    followZoom: ${zoomLevel.toFixed(1)},  // How close camera follows drone
+    duration: ${duration}000  // milliseconds
+};
+
+// CINEMATIC SEQUENCE (Film-style):
+// ═══════════════════════════════════════════════════
+// Phase 1 (0-20%): ZOOM IN
+//   - Start: Full wide shot of entire area
+//   - Camera: Zooms IN smoothly to TAKEOFF location
+//   - Drone: Sitting on ground at START, waiting
+//   - Effect: "Establishing shot" then focus on our subject
+//
+// Phase 2 (20-35%): LIFTOFF
+//   - Camera: Stays locked on drone (${zoomLevel.toFixed(1)}x zoom)
+//   - Drone: Lifts off vertically from ground
+//   - View: Drone fills most of the screen
+//   - Effect: Dramatic close-up liftoff
+//
+// Phase 3 (35-100%): FLIGHT
+//   - Camera: Follows drone closely (${zoomLevel.toFixed(1)}x zoom maintained)
+//   - Drone: Flies from START to LANDING zone
+//   - Tracking: Camera pans/moves to keep drone centered
+//   - Effect: Immersive "follow cam" like action films
+//
+// LANDING:
+//   - Drone remains visible at LANDING location after arrival
+//   - Camera returns to normal view showing final position
+//
+// Total Duration: ${duration} seconds
+// ═══════════════════════════════════════════════════`;
+            
+            codeOutput.textContent = code;
+        }
+
+        // Clear locations
+        function clearLocations() {
+            startLocation = null;
+            endLocation = null;
+            updateDisplay();
+        }
+
+        // Update zoom value
+        function updateZoomValue(value) {
+            zoomLevel = parseFloat(value);
+            document.getElementById('zoom-value').textContent = `${zoomLevel.toFixed(1)}x`;
+            updateCodeOutput();
+        }
+
+        // Update duration value
+        function updateDurationValue(value) {
+            duration = parseFloat(value);
+            document.getElementById('duration-value').textContent = `${duration}s`;
+            updateCodeOutput();
+        }
+
+        // Copy code to clipboard
+        function copyCode() {
+            if (!startLocation || !endLocation) return;
+            
+            navigator.clipboard.writeText(codeOutput.textContent).then(() => {
+                const notice = document.getElementById('copy-notice');
+                notice.classList.add('show');
+                setTimeout(() => notice.classList.remove('show'), 2000);
+            });
+        }
+
+        // Preview cinematic animation
+        function previewAnimation() {
+            if (!startLocation || !endLocation || isAnimating) return;
+            
+            isAnimating = true;
+            mapWrapper.classList.add('animating');
+            const droneGraphic = document.getElementById('drone-graphic');
+            droneGraphic.classList.add('animating');
+            
+            const startTime = performance.now();
+            const totalDuration = duration * 1000;
+            
+            // NEW ANIMATION SEQUENCE:
+            // Phase 1 (0-20%): Show full image, then zoom IN to start location
+            // Phase 2 (20-35%): Drone lifts off vertically
+            // Phase 3 (35-100%): Camera follows drone closely as it flies to end
+            
+            function animate(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / totalDuration, 1);
+                
+                let scale, translateX, translateY, droneX, droneY;
+                const rect = mapImage.getBoundingClientRect();
+                
+                if (progress < 0.2) {
+                    // Phase 1: Zoom IN from full view to start location
+                    const zoomProgress = progress / 0.2;
+                    const easedZoom = zoomProgress < 0.5 
+                        ? 2 * zoomProgress * zoomProgress 
+                        : 1 - Math.pow(-2 * zoomProgress + 2, 2) / 2;
+                    
+                    // Start at normal (1x), zoom IN to closeup
+                    scale = 1 + (zoomLevel - 1) * easedZoom;
+                    
+                    // Center on start location
+                    const centerX = (startLocation.x / 100) * rect.width;
+                    const centerY = (startLocation.y / 100) * rect.height;
+                    
+                    translateX = (rect.width / 2 - centerX) * (scale - 1) / scale;
+                    translateY = (rect.height / 2 - centerY) * (scale - 1) / scale;
+                    
+                    // Drone stays at start
+                    droneX = startLocation.x;
+                    droneY = startLocation.y;
+                    
+                } else if (progress < 0.35) {
+                    // Phase 2: Liftoff - drone rises, camera stays locked on drone
+                    const liftProgress = (progress - 0.2) / 0.15;
+                    const easedLift = 1 - Math.pow(1 - liftProgress, 2); // Ease out
+                    
+                    // Stay zoomed in close
+                    scale = zoomLevel;
+                    
+                    const centerX = (startLocation.x / 100) * rect.width;
+                    const centerY = (startLocation.y / 100) * rect.height;
+                    
+                    translateX = (rect.width / 2 - centerX) * (scale - 1) / scale;
+                    translateY = (rect.height / 2 - centerY) * (scale - 1) / scale;
+                    
+                    // Drone position stays the same (liftoff is visual only)
+                    droneX = startLocation.x;
+                    droneY = startLocation.y;
+                    
+                } else {
+                    // Phase 3: Flight - camera follows drone closely from start to end
+                    const flightProgress = (progress - 0.35) / 0.65;
+                    const easedFlight = flightProgress < 0.5 
+                        ? 2 * flightProgress * flightProgress 
+                        : 1 - Math.pow(-2 * flightProgress + 2, 2) / 2;
+                    
+                    // Stay zoomed in, following the drone
+                    scale = zoomLevel;
+                    
+                    // Interpolate drone position
+                    droneX = startLocation.x + (endLocation.x - startLocation.x) * easedFlight;
+                    droneY = startLocation.y + (endLocation.y - startLocation.y) * easedFlight;
+                    
+                    // Camera follows the drone
+                    const droneCenterX = (droneX / 100) * rect.width;
+                    const droneCenterY = (droneY / 100) * rect.height;
+                    
+                    translateX = (rect.width / 2 - droneCenterX) * (scale - 1) / scale;
+                    translateY = (rect.height / 2 - droneCenterY) * (scale - 1) / scale;
+                }
+                
+                // Apply transform to map
+                mapWrapper.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
+                
+                // Update drone position and visibility
+                droneGraphic.setAttribute('transform', `translate(${droneX}, ${droneY})`);
+                
+                // Make drone visible during zoom in phase (after 10% progress)
+                if (progress > 0.1) {
+                    droneGraphic.style.opacity = '1';
+                } else {
+                    droneGraphic.style.opacity = '0';
+                }
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    // Animation complete - keep drone visible at landing zone
+                    droneGraphic.classList.remove('animating');
+                    // Keep drone visible at end location
+                    droneGraphic.style.opacity = '1';
+                    mapWrapper.classList.remove('animating');
+                    mapWrapper.style.transform = '';
+                    isAnimating = false;
+                }
+            }
+            
+            requestAnimationFrame(animate);
+        }
+
+        // Mouse events
+        mapContainer.addEventListener('click', (e) => {
+            if (!mapImage.src || isDragging || isAnimating) return;
+            
+            const pos = getMousePercent(e);
+            
+            // Set start location first, then end location
+            if (!startLocation) {
+                startLocation = pos;
+            } else if (!endLocation) {
+                endLocation = pos;
+            } else {
+                // If both are set, clicking again resets to start
+                startLocation = pos;
+                endLocation = null;
+            }
+            
+            updateDisplay();
+        });
+
+        mapContainer.addEventListener('mousemove', (e) => {
+            if (!mapImage.src) return;
+            
+            const pos = getMousePercent(e);
+            mouseCoords.textContent = `${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}`;
+            
+            // Handle dragging markers
+            if (isDragging && dragTarget) {
+                if (dragTarget === 'start') {
+                    startLocation = pos;
+                } else if (dragTarget === 'end') {
+                    endLocation = pos;
+                }
+                updateDisplay();
+            }
+        });
+
+        // Drag markers
+        document.addEventListener('mousedown', (e) => {
+            if (e.target.classList.contains('start-marker')) {
+                isDragging = true;
+                dragTarget = 'start';
+            } else if (e.target.classList.contains('end-marker')) {
+                isDragging = true;
+                dragTarget = 'end';
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+            dragTarget = null;
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'c' && !window.getSelection().toString()) {
+                e.preventDefault();
+                copyCode();
+            }
+            if (e.key === 'p' || e.key === 'P') {
+                if (document.activeElement.tagName !== 'INPUT') {
+                    e.preventDefault();
+                    previewAnimation();
+                }
+            }
+            if (e.key === 'r' || e.key === 'R') {
+                if (document.activeElement.tagName !== 'INPUT') {
+                    e.preventDefault();
+                    clearLocations();
+                }
+            }
+        });
+
+        // Initialize
+        updateDisplay();
+    </script>
+</body>
+</html>

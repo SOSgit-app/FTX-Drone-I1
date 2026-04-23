@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scoring Key Editor - SOS FTX</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: #1a1a2e;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            min-height: 100vh;
+            padding: 28px 32px 40px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 14px;
+            color: #00ff00;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        .instructions {
+            text-align: center;
+            margin-bottom: 28px;
+            color: #888;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .instructions span { color: #ffaa00; }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .map-section {
+            width: 100%;
+            padding-top: 8px;
+        }
+
+        .map-section .hint {
+            margin-top: 18px;
+            padding: 0 4px;
+        }
+
+        .controls-section {
+            width: min(980px, 96vw);
+            display: flex;
+            flex-direction: column;
+            gap: 26px;
+        }
+
+        .map-container {
+            position: relative;
+            display: inline-block;
+            border: 3px solid #00ff00;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+            background: #0a0a0a;
+            width: 100%;
+        }
+
+        .map-container img {
+            display: block;
+            width: 100%;
+            height: auto;
+            max-height: 75vh;
+        }
+
+        .map-container svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Building markers (A-T) */
+        .building-marker {
+            cursor: pointer;
+        }
+
+        .building-marker circle {
+            fill: rgba(0, 0, 0, 0.35);
+            stroke: rgba(0, 255, 0, 0.85);
+            stroke-width: 0.35;
+            filter: drop-shadow(0 0 1px rgba(0, 255, 0, 0.35));
+            transition: fill 0.15s, stroke 0.15s, transform 0.05s;
+        }
+
+        .building-marker text {
+            font-size: 3px;
+            fill: rgba(255,255,255,0.95);
+            text-anchor: middle;
+            dominant-baseline: middle;
+            pointer-events: none;
+            font-weight: bold;
+            filter: drop-shadow(0 0 0.7px rgba(0,0,0,1));
+        }
+
+        .building-marker:hover circle {
+            fill: rgba(0, 255, 0, 0.12);
+            stroke: rgba(0, 255, 0, 1);
+        }
+
+        .building-marker.unplaced circle {
+            stroke: rgba(255, 255, 255, 0.25);
+            filter: none;
+        }
+
+        .building-marker.selected-q5 circle {
+            fill: rgba(255, 170, 0, 0.25);
+            stroke: rgba(255, 170, 0, 0.95);
+            filter: drop-shadow(0 0 2px rgba(255, 170, 0, 0.35));
+        }
+
+        .building-marker.selected-q6 circle {
+            fill: rgba(68, 136, 255, 0.22);
+            stroke: rgba(68, 136, 255, 0.95);
+            filter: drop-shadow(0 0 2px rgba(68, 136, 255, 0.35));
+        }
+
+        .building-marker.editing circle {
+            stroke: rgba(255, 255, 0, 0.95);
+            filter: drop-shadow(0 0 2px rgba(255, 255, 0, 0.35));
+        }
+
+        .control-panel {
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #333;
+            border-radius: 10px;
+            padding: 22px 24px 26px;
+        }
+
+        .control-panel h3 {
+            color: #ffaa00;
+            margin-bottom: 16px;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+
+        .section-block {
+            margin-top: 22px;
+        }
+
+        .section-block:first-child {
+            margin-top: 0;
+        }
+
+        .section-block > .hint {
+            margin-top: 14px;
+        }
+
+        .subsection {
+            margin-top: 18px;
+            padding: 16px 18px;
+            border: 1px solid #2a2a3a;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.22);
+        }
+
+        .subsection-title {
+            color: #aaa;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            margin-bottom: 14px;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: 160px 1fr 110px;
+            gap: 14px 16px;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .row.compact {
+            margin-bottom: 10px;
+        }
+
+        .row.two-col {
+            grid-template-columns: 160px 1fr;
+        }
+
+        .row.three-wide {
+            grid-template-columns: 160px 1fr 140px;
+        }
+
+        .req {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            justify-content: flex-start;
+            color: #888;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            user-select: none;
+        }
+
+        .req input { transform: scale(1.1); }
+
+        label {
+            color: #888;
+            font-size: 0.85rem;
+            min-width: 0;
+        }
+
+        select, input[type="number"], input[type="text"] {
+            width: 100%;
+            padding: 8px 10px;
+            background: #0a0a0a;
+            border: 2px solid #00ff00;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .inline-note {
+            color: #666;
+            font-size: 0.8rem;
+            line-height: 1.45;
+        }
+
+        .suspect-table {
+            margin-top: 6px;
+            border: 1px solid #222;
+            border-radius: 8px;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.25);
+            overflow-x: auto;
+        }
+
+        .suspect-head {
+            display: grid;
+            grid-template-columns: 160px 1fr 120px 1fr 90px 90px 100px 110px;
+            gap: 14px 16px;
+            align-items: center;
+            padding: 14px 16px;
+            border-bottom: 1px solid #222;
+            background: rgba(0, 0, 0, 0.55);
+            color: #888;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .suspect-row {
+            display: grid;
+            grid-template-columns: 160px 1fr 120px 1fr 90px 90px 100px 110px;
+            gap: 14px 16px;
+            align-items: center;
+            padding: 14px 16px;
+            border-bottom: 1px solid #161616;
+        }
+
+        /* Ensure table doesn't get visually clipped; scroll instead */
+        .suspect-head, .suspect-row {
+            min-width: 980px;
+        }
+
+        .suspect-row:last-child { border-bottom: none; }
+
+        .suspect-row label {
+            color: #888;
+            font-size: 0.85rem;
+        }
+
+        .suspect-row select,
+        .suspect-row input[type="text"] {
+            padding: 7px 9px;
+            font-size: 0.85rem;
+        }
+
+        .suspect-row select {
+            border-width: 1px;
+            border-color: rgba(0, 255, 0, 0.65);
+        }
+
+        .suspect-row input[type="text"] {
+            border-width: 1px;
+            border-color: rgba(0, 255, 0, 0.65);
+        }
+
+        .btn-inline {
+            width: 100%;
+            margin-bottom: 0;
+            padding: 9px 10px;
+            font-size: 0.85rem;
+        }
+
+        .btn-big {
+            padding: 14px 15px;
+            letter-spacing: 2px;
+        }
+
+        select:focus, input:focus {
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.25);
+        }
+
+        .btn {
+            background: #1a3a1a;
+            color: #00ff00;
+            border: 2px solid #00ff00;
+            padding: 11px 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            width: 100%;
+            margin-bottom: 10px;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: #00ff00;
+            color: #0a0a0a;
+        }
+
+        .btn-primary {
+            border-color: #4488ff;
+            color: #4488ff;
+        }
+        .btn-primary:hover {
+            background: #4488ff;
+            color: #ffffff;
+        }
+
+        .btn-warning {
+            border-color: #ffaa00;
+            color: #ffaa00;
+        }
+        .btn-warning:hover {
+            background: #ffaa00;
+            color: #0a0a0a;
+        }
+
+        .hint {
+            color: #666;
+            font-size: 0.75rem;
+            margin-top: 12px;
+            line-height: 1.5;
+        }
+
+        .pill {
+            display: inline-block;
+            padding: 2px 8px;
+            border: 1px solid #333;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            color: #888;
+            margin-right: 6px;
+        }
+
+        .pill.q5 { border-color: rgba(255,170,0,0.8); color: #ffaa00; }
+        .pill.q6 { border-color: rgba(68,136,255,0.8); color: #4488ff; }
+
+        .checkbox-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .check {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 6px;
+        }
+
+        .check input { transform: scale(1.1); }
+
+        .code-output {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 14px;
+            font-size: 0.75rem;
+            max-height: 260px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            margin-bottom: 12px;
+        }
+
+        .copy-notice {
+            color: #00ff00;
+            font-size: 0.8rem;
+            text-align: center;
+            margin-top: 5px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .copy-notice.show { opacity: 1; }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0a0a0a; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #00ff00; }
+    </style>
+</head>
+<body>
+    <h1>Scoring Key Editor</h1>
+    <p class="instructions">
+        Configure answer keys for <span>VA / VB / VC</span> | Q1 is <span>auto</span> from the student’s selected position | Export JSON for the app
+    </p>
+
+    <div class="container">
+        <div class="controls-section">
+            <div class="control-panel">
+                <h3>Version + Preview</h3>
+                <div class="section-block">
+                    <div class="row">
+                        <label for="version">Build version</label>
+                        <select id="version">
+                            <option value="VA">VA</option>
+                            <option value="VB">VB</option>
+                            <option value="VC">VC</option>
+                        </select>
+                    </div>
+                    <div class="row">
+                        <label for="test-part">Test part</label>
+                        <select id="test-part">
+                            <option value="1">Part 1</option>
+                            <option value="2">Part 2</option>
+                        </select>
+                        <label class="req" title="Whether this version/angle has a Part 2 test">
+                            <input type="checkbox" id="has-part2">
+                            Has Part 2
+                        </label>
+                    </div>
+                    <div class="row" style="margin-bottom: 0;">
+                        <label for="selected-angle">Q1 (auto): chosen angle</label>
+                        <select id="selected-angle">
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                        </select>
+                        <label class="req" title="Must be correct to pass">
+                            <input type="checkbox" id="req-q1" checked>
+                            Required
+                        </label>
+                    </div>
+                    <div class="hint">
+                        In the actual app, Q1 will be auto-set from the student’s selection. This dropdown is for previewing the exported JSON.
+                    </div>
+                    <div class="hint" id="part2-hint" style="margin-top: 10px;">
+                        If "Has Part 2" is unchecked, Part 2 will be exported as null for this version/angle.
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <h3>Questions (Answer Key)</h3>
+
+                <div class="section-block">
+                    <div class="row">
+                        <label for="q2">Q2: suspects</label>
+                        <select id="q2">
+                            <option value="">—</option>
+                            <option value="0">0</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                        </select>
+                        <label class="req" title="Must be correct to pass">
+                            <input type="checkbox" id="req-q2" checked>
+                            Required
+                        </label>
+                    </div>
+                </div>
+
+                <div class="section-block">
+                    <div class="subsection">
+                        <div class="subsection-title">Suspect identification (Q5 / weapon)</div>
+                        <p class="inline-note" style="margin-bottom: 14px;">
+                            Based on Q2 (0–5). For each suspect, set building marker and weapon (last seen).
+                        </p>
+                        <div class="hint" style="margin-top: 0;">
+                            Use the <span style="color:#888;">Req(B)</span>, <span style="color:#888;">Req(W?)</span>, and <span style="color:#888;">Req(Type)</span> checkmarks on each suspect row to decide what must be correct to pass.
+                        </div>
+                    </div>
+
+                    <div class="suspect-table">
+                        <div class="suspect-head">
+                            <div>Suspect</div>
+                            <div>Building</div>
+                            <div>Weapon?</div>
+                            <div>Weapon type (last)</div>
+                            <div>Req(B)</div>
+                            <div>Req(W?)</div>
+                            <div>Req(Type)</div>
+                            <div>Action</div>
+                        </div>
+                        <div id="suspect-buildings"></div>
+                    </div>
+                    <button class="btn btn-warning btn-big" id="clear-suspect-buildings" type="button" style="margin-top: 16px;">Clear suspect details</button>
+
+                    <div class="hint">
+                        Building markers are labeled <span style="color:#ffaa00;">A–T</span>. In edit mode, click the map to place the currently selected letter.
+                    </div>
+                </div>
+
+                <div class="section-block">
+                    <div class="row compact" style="grid-template-columns: 1fr auto; margin-bottom: 0;">
+                        <div style="color:#888; font-size:0.88rem; letter-spacing: 0.5px;">Q7: can detain (multi-correct)</div>
+                        <label class="req" title="Must be correct to pass">
+                            <input type="checkbox" id="req-q7" checked>
+                            Required
+                        </label>
+                    </div>
+                    <div class="checkbox-grid" id="q7">
+                        <label class="check"><input type="checkbox" value="A"> A. Yes, clear view without weapon</label>
+                        <label class="check"><input type="checkbox" value="B"> B. Not without tear gas/flash bang</label>
+                        <label class="check"><input type="checkbox" value="C"> C. No, weapon seen, keep distance</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <h3>Building Marker Editor (A–T)</h3>
+                <div class="row">
+                    <label for="marker-mode">Mode</label>
+                    <select id="marker-mode">
+                        <option value="select">Student selection (Q5/Q6)</option>
+                        <option value="edit">Developer edit markers</option>
+                    </select>
+                </div>
+                <div class="row">
+                    <label for="active-marker">Active marker</label>
+                    <select id="active-marker"></select>
+                </div>
+                <button class="btn" id="clear-active-marker" type="button">Clear active marker placement</button>
+                <button class="btn btn-warning" id="clear-all-markers" type="button">Clear ALL marker placements</button>
+                <div class="hint">
+                    - **Edit mode**: click the map to place the active marker, or drag a marker to fine-tune.<br>
+                    - **Selection mode**: clicking a marker sets Q5 then Q6 (same behavior as before).
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <h3>Export / Import JSON</h3>
+                <div class="code-output" id="json-output"></div>
+                <button class="btn btn-primary" id="copy-json" type="button">📋 Copy JSON</button>
+                <button class="btn" id="download-json" type="button">⬇ Download JSON</button>
+                <div class="copy-notice" id="copy-notice">Copied!</div>
+                <div style="margin-top: 18px;">
+                    <textarea id="json-import" style="width:100%; min-height:100px; padding:14px; background:#0a0a0a; border:1px solid #333; color:#00ff00; font-family:'Courier New', monospace; font-size:0.75rem; line-height:1.45;" placeholder="Paste exported JSON here to load..."></textarea>
+                    <button class="btn" id="load-json" type="button" style="margin-top: 12px; margin-bottom: 0;">Load JSON</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map moved below questions to reduce clutter -->
+        <div class="map-section">
+            <div class="map-container" id="map-container">
+                <img src="newsimcity.png" alt="Map" id="map-image">
+                <svg id="markers-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <g id="markers"></g>
+                </svg>
+            </div>
+            <div class="hint">
+                <span class="pill q5">Q5</span> click a building marker (A–T) to set the primary suspect location.
+                <span class="pill q6">Q6</span> click a building marker (A–T) to set the next suspect location (or set N/A).
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =========================
+        // State
+        // =========================
+        const DEFAULT_BUILDINGS = {
+            A: { x: 19.55, y: 42.87 },
+            B: { x: 30.45, y: 33.91 },
+            C: { x: 40.22, y: 26.17 },
+            D: { x: 50.16, y: 18.84 },
+            E: { x: 18.75, y: 61.2 },
+            F: { x: 27.4, y: 56.52 },
+            G: { x: 37.66, y: 48.98 },
+            H: { x: 46.79, y: 39.0 },
+            I: { x: 54.97, y: 33.3 },
+            J: { x: 63.3, y: 26.58 },
+            K: { x: 34.13, y: 84.01 },
+            L: { x: 47.6, y: 61.61 },
+            M: { x: 57.21, y: 55.3 },
+            N: { x: 67.15, y: 49.19 },
+            O: { x: 59.62, y: 64.46 },
+            P: { x: 71.96, y: 62.32 },
+            Q: { x: 81.09, y: 55.6 },
+            R: { x: 86.22, y: 51.12 },
+            S: { x: 66.51, y: 6.01 },
+            T: { x: 69.55, y: 12.32 }
+        };
+
+        function cloneBuildings(b) {
+            const out = {};
+            Object.keys(b || {}).forEach(k => {
+                const p = b[k];
+                out[k] = (p && Number.isFinite(p.x) && Number.isFinite(p.y)) ? { x: p.x, y: p.y } : null;
+            });
+            return out;
+        }
+
+        const state = {
+            version: 'VA',
+            selectedAngle: 'A', // Q1 (auto in app)
+            testPart: '1', // Part 1 or Part 2
+            q2: '',
+            suspects: Array.from({ length: 5 }, () => ({ buildings: [], weaponSeen: '', weaponType: '' })), // up to 5 suspects
+            q7: [], // array of 'A' | 'B' | 'C'
+            required: {
+                q1: true,
+                q2: true,
+                q5Building: Array.from({ length: 5 }, () => true),
+                q5WeaponSeen: Array.from({ length: 5 }, () => true),
+                q5WeaponType: Array.from({ length: 5 }, () => true),
+                q7: true
+            },
+            // Whether a given version+angle has a Part 2 test configured
+            hasPart2: { VA: { A: false, B: false, C: false }, VB: { A: false, B: false, C: false }, VC: { A: false, B: false, C: false } },
+            // Per version+angle+part answer key store (so you can configure both parts)
+            keys: {}, // keys[version][angle][part] = { q2, suspects, q7, required }
+            buildings: cloneBuildings(DEFAULT_BUILDINGS), // label -> { x, y } in viewBox percent coords
+        };
+
+        // DOM
+        const versionEl = document.getElementById('version');
+        const testPartEl = document.getElementById('test-part');
+        const hasPart2El = document.getElementById('has-part2');
+        const part2HintEl = document.getElementById('part2-hint');
+        const selectedAngleEl = document.getElementById('selected-angle');
+        const q2El = document.getElementById('q2');
+        const suspectBuildingsEl = document.getElementById('suspect-buildings');
+        const clearSuspectBuildingsBtn = document.getElementById('clear-suspect-buildings');
+        let activeSuspectForMap = 0; // 0-based index
+        const q7Wrap = document.getElementById('q7');
+        const reqEls = {
+            q1: document.getElementById('req-q1'),
+            q2: document.getElementById('req-q2'),
+            q7: document.getElementById('req-q7')
+        };
+        const mapContainer = document.getElementById('map-container');
+        const markersGroup = document.getElementById('markers');
+        const markerModeEl = document.getElementById('marker-mode');
+        const activeMarkerEl = document.getElementById('active-marker');
+        const clearActiveMarkerBtn = document.getElementById('clear-active-marker');
+        const clearAllMarkersBtn = document.getElementById('clear-all-markers');
+        const jsonOutput = document.getElementById('json-output');
+        const copyBtn = document.getElementById('copy-json');
+        const downloadBtn = document.getElementById('download-json');
+        const copyNotice = document.getElementById('copy-notice');
+        const jsonImport = document.getElementById('json-import');
+        const loadBtn = document.getElementById('load-json');
+
+        const BUILDING_LABELS = Array.from({ length: 20 }, (_, i) => String.fromCharCode(65 + i)); // A..T
+
+        function ensureBuildings() {
+            BUILDING_LABELS.forEach(l => {
+                if (!Object.prototype.hasOwnProperty.call(state.buildings, l)) state.buildings[l] = null;
+            });
+        }
+
+        function clampInt(n, min, max) { return Math.max(min, Math.min(max, n)); }
+
+        function getMousePercentOnMap(e) {
+            const img = document.getElementById('map-image');
+            const rect = img.getBoundingClientRect();
+            const x = ((e.clientX - rect.left) / rect.width) * 100;
+            const y = ((e.clientY - rect.top) / rect.height) * 100;
+            return { x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) };
+        }
+
+        function setActiveMarkerOptions() {
+            activeMarkerEl.innerHTML = '';
+            BUILDING_LABELS.forEach(l => {
+                const opt = document.createElement('option');
+                opt.value = l;
+                opt.textContent = l;
+                activeMarkerEl.appendChild(opt);
+            });
+        }
+
+        function isPlaced(label) {
+            const p = state.buildings[label];
+            return !!(p && Number.isFinite(p.x) && Number.isFinite(p.y));
+        }
+
+        function renderMarkers() {
+            ensureBuildings();
+            markersGroup.innerHTML = '';
+
+            BUILDING_LABELS.forEach(label => {
+                const p = state.buildings[label];
+                const placed = isPlaced(label);
+                const x = placed ? p.x : -1000;
+                const y = placed ? p.y : -1000;
+
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                g.setAttribute('class', [
+                    'building-marker',
+                    placed ? '' : 'unplaced',
+                    (state.q5 === label) ? 'selected-q5' : '',
+                    (state.q6 === label) ? 'selected-q6' : '',
+                    (markerModeEl.value === 'edit' && activeMarkerEl.value === label) ? 'editing' : ''
+                ].filter(Boolean).join(' '));
+                g.setAttribute('data-label', label);
+                g.setAttribute('transform', `translate(${x}, ${y})`);
+
+                const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                c.setAttribute('cx', '0');
+                c.setAttribute('cy', '0');
+                c.setAttribute('r', '2.3');
+                g.appendChild(c);
+
+                const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                t.setAttribute('x', '0');
+                t.setAttribute('y', '0.2');
+                t.textContent = label;
+                g.appendChild(t);
+
+                // Interaction
+                if (placed) {
+                    g.addEventListener('click', (ev) => {
+                        ev.stopPropagation();
+                        onMarkerClick(label);
+                    });
+                    g.addEventListener('mousedown', (ev) => {
+                        if (markerModeEl.value !== 'edit') return;
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        startMarkerDrag(label);
+                    });
+                }
+
+                markersGroup.appendChild(g);
+            });
+        }
+
+        function onMarkerClick(label) {
+            if (markerModeEl.value === 'edit') {
+                activeMarkerEl.value = label;
+                renderMarkers();
+                updateJsonOutput();
+                return;
+            }
+
+            // Selection mode: toggle building on the active suspect (ANY-of list)
+            const count = state.q2 !== '' ? Number(state.q2) : 0;
+            if (!Number.isFinite(count) || count <= 0) return;
+
+            const idx = Math.max(0, Math.min(count - 1, activeSuspectForMap));
+            const list = Array.isArray(state.suspects[idx].buildings) ? state.suspects[idx].buildings : [];
+            const set = new Set(list);
+            if (set.has(label)) set.delete(label); else set.add(label);
+            state.suspects[idx].buildings = Array.from(set).sort();
+            syncUIFromState();
+            renderMarkers();
+            updateJsonOutput();
+        }
+
+        let draggingLabel = null;
+        function startMarkerDrag(label) {
+            draggingLabel = label;
+            document.addEventListener('mousemove', onDragMove);
+            document.addEventListener('mouseup', onDragEnd, { once: true });
+        }
+
+        function onDragMove(e) {
+            if (!draggingLabel) return;
+            const pos = getMousePercentOnMap(e);
+            state.buildings[draggingLabel] = { x: +pos.x.toFixed(2), y: +pos.y.toFixed(2) };
+            renderMarkers();
+            updateJsonOutput();
+        }
+
+        function onDragEnd() {
+            document.removeEventListener('mousemove', onDragMove);
+            draggingLabel = null;
+        }
+
+        function getQ7Selected() {
+            return Array.from(q7Wrap.querySelectorAll('input[type="checkbox"]'))
+                .filter(cb => cb.checked)
+                .map(cb => cb.value)
+                .sort();
+        }
+
+        function setQ7Selected(values) {
+            const set = new Set(values || []);
+            q7Wrap.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                cb.checked = set.has(cb.value);
+            });
+        }
+
+        function readCurrentUIIntoState() {
+            state.q2 = q2El.value;
+            state.q7 = getQ7Selected();
+            state.required = {
+                q1: !!reqEls.q1?.checked,
+                q2: !!reqEls.q2?.checked,
+                q5Building: Array.isArray(state.required.q5Building) ? state.required.q5Building : Array.from({ length: 5 }, () => true),
+                q5WeaponSeen: Array.isArray(state.required.q5WeaponSeen) ? state.required.q5WeaponSeen : Array.from({ length: 5 }, () => true),
+                q5WeaponType: Array.isArray(state.required.q5WeaponType) ? state.required.q5WeaponType : Array.from({ length: 5 }, () => true),
+                q7: !!reqEls.q7?.checked
+            };
+        }
+
+        function persistCurrentKeyFromUI() {
+            readCurrentUIIntoState();
+            persistCurrentKey();
+        }
+
+        function onContextSelectorChange() {
+            // Save current part before switching
+            persistCurrentKeyFromUI();
+
+            state.version = versionEl.value;
+            state.testPart = testPartEl.value;
+            state.selectedAngle = selectedAngleEl.value;
+
+            state.hasPart2[state.version] = state.hasPart2[state.version] || { A: false, B: false, C: false };
+            state.hasPart2[state.version][state.selectedAngle] = !!hasPart2El?.checked;
+
+            loadCurrentKey();
+            updateJsonOutput();
+        }
+
+        function syncUIFromState() {
+            versionEl.value = state.version;
+            testPartEl.value = state.testPart;
+            selectedAngleEl.value = state.selectedAngle;
+            if (hasPart2El) hasPart2El.checked = !!(state.hasPart2?.[state.version]?.[state.selectedAngle]);
+            q2El.value = state.q2;
+            setQ7Selected(state.q7);
+            if (reqEls.q1) reqEls.q1.checked = !!state.required.q1;
+            if (reqEls.q2) reqEls.q2.checked = !!state.required.q2;
+            if (reqEls.q7) reqEls.q7.checked = !!state.required.q7;
+
+            rebuildSuspectBuildingInputs();
+        }
+
+        function ensureKeyStore(version, angle) {
+            if (!state.keys[version]) state.keys[version] = {};
+            if (!state.keys[version][angle]) state.keys[version][angle] = {};
+            if (!state.keys[version][angle]['1']) state.keys[version][angle]['1'] = null;
+            if (!state.keys[version][angle]['2']) state.keys[version][angle]['2'] = null;
+        }
+
+        function snapshotCurrentKey() {
+            return {
+                q2: state.q2,
+                suspects: state.suspects.map(s => ({ building: s.building || '', weaponSeen: s.weaponSeen || '', weaponType: s.weaponType || '' })),
+                q7: state.q7.slice(),
+                required: {
+                    q1: !!state.required.q1,
+                    q2: !!state.required.q2,
+                    q5Building: Array.isArray(state.required.q5Building) ? state.required.q5Building.slice() : Array.from({ length: 5 }, () => true),
+                    q5WeaponSeen: Array.isArray(state.required.q5WeaponSeen) ? state.required.q5WeaponSeen.slice() : Array.from({ length: 5 }, () => true),
+                    q5WeaponType: Array.isArray(state.required.q5WeaponType) ? state.required.q5WeaponType.slice() : Array.from({ length: 5 }, () => true),
+                    q7: !!state.required.q7
+                }
+            };
+        }
+
+        function applySnapshotToState(snap) {
+            const safe = snap || {};
+            state.q2 = safe.q2 ?? '';
+            state.suspects = Array.isArray(safe.suspects)
+                ? safe.suspects.slice(0, 5).map(x => ({ building: x?.building || '', weaponSeen: x?.weaponSeen || '', weaponType: x?.weaponType || '' }))
+                : Array.from({ length: 5 }, () => ({ building: '', weaponSeen: '', weaponType: '' }));
+            while (state.suspects.length < 5) state.suspects.push({ building: '', weaponSeen: '', weaponType: '' });
+            state.q7 = Array.isArray(safe.q7) ? safe.q7.slice().sort() : [];
+            const r = safe.required || {};
+            state.required = {
+                q1: r.q1 !== undefined ? !!r.q1 : true,
+                q2: r.q2 !== undefined ? !!r.q2 : true,
+                q5Building: Array.isArray(r.q5Building) ? r.q5Building.slice(0, 5) : Array.from({ length: 5 }, () => true),
+                q5WeaponSeen: Array.isArray(r.q5WeaponSeen) ? r.q5WeaponSeen.slice(0, 5) : Array.from({ length: 5 }, () => true),
+                q5WeaponType: Array.isArray(r.q5WeaponType) ? r.q5WeaponType.slice(0, 5) : Array.from({ length: 5 }, () => true),
+                q7: r.q7 !== undefined ? !!r.q7 : true
+            };
+        }
+
+        function persistCurrentKey() {
+            ensureKeyStore(state.version, state.selectedAngle);
+            state.keys[state.version][state.selectedAngle][state.testPart] = snapshotCurrentKey();
+        }
+
+        function loadCurrentKey() {
+            ensureKeyStore(state.version, state.selectedAngle);
+            const snap = state.keys[state.version][state.selectedAngle][state.testPart];
+            if (state.testPart === '2' && !(state.hasPart2?.[state.version]?.[state.selectedAngle])) {
+                // If Part 2 isn't enabled, show a blank template
+                applySnapshotToState(null);
+            } else if (snap) {
+                applySnapshotToState(snap);
+            } else {
+                applySnapshotToState(null);
+            }
+
+            if (part2HintEl) {
+                part2HintEl.textContent = (state.testPart === '2' && !(state.hasPart2?.[state.version]?.[state.selectedAngle]))
+                    ? 'Part 2 is not enabled for this version/angle. Enable "Has Part 2" to configure Part 2.'
+                    : 'If "Has Part 2" is unchecked, Part 2 will be exported as null for this version/angle.';
+            }
+
+            syncUIFromState();
+            renderMarkers();
+        }
+
+        function rebuildSuspectBuildingInputs() {
+            const count = state.q2 !== '' ? Number(state.q2) : 0;
+            suspectBuildingsEl.innerHTML = '';
+
+            if (!Number.isFinite(count) || count <= 0) {
+                const empty = document.createElement('div');
+                empty.className = 'hint';
+                empty.style.padding = '10px 12px';
+                empty.textContent = 'Set Q2 to 1–5 to enable suspect building selection.';
+                suspectBuildingsEl.appendChild(empty);
+                return;
+            }
+
+            // Map selection target row
+            const selectorRow = document.createElement('div');
+            selectorRow.className = 'suspect-row';
+            selectorRow.style.background = 'rgba(0,0,0,0.25)';
+
+            const lab0 = document.createElement('label');
+            lab0.textContent = 'Map clicks apply to';
+
+            const sel = document.createElement('select');
+            sel.innerHTML = Array.from({ length: Math.min(5, count) }, (_, i) => `<option value="${i}">Suspect ${i + 1}</option>`).join('');
+            sel.value = String(activeSuspectForMap);
+            sel.addEventListener('change', () => {
+                activeSuspectForMap = Number(sel.value) || 0;
+                rebuildSuspectBuildingInputs();
+                renderMarkers();
+            });
+
+            const note = document.createElement('div');
+            note.className = 'inline-note';
+            note.textContent = 'Click markers A–T to add/remove acceptable buildings for the selected suspect.';
+
+            const spacer = document.createElement('div');
+            spacer.textContent = '';
+
+            const btnClearActive = document.createElement('button');
+            btnClearActive.type = 'button';
+            btnClearActive.className = 'btn btn-inline';
+            btnClearActive.textContent = 'Clear buildings';
+            btnClearActive.addEventListener('click', () => {
+                const idx = Math.max(0, Math.min(count - 1, activeSuspectForMap));
+                state.suspects[idx].buildings = [];
+                syncUIFromState();
+                renderMarkers();
+                updateJsonOutput();
+            });
+
+            // Fill the 8-column grid: Suspect | Building | Weapon? | Weapon type | Req(B) | Req(W?) | Req(Type) | Action
+            selectorRow.appendChild(lab0);
+            const c1 = document.createElement('div'); c1.appendChild(sel); selectorRow.appendChild(c1);
+            const c2 = document.createElement('div'); c2.appendChild(note); selectorRow.appendChild(c2);
+            selectorRow.appendChild(spacer);
+            const c4 = document.createElement('div'); c4.textContent = ''; selectorRow.appendChild(c4);
+            const c5 = document.createElement('div'); c5.textContent = ''; selectorRow.appendChild(c5);
+            const c6 = document.createElement('div'); c6.textContent = ''; selectorRow.appendChild(c6);
+            selectorRow.appendChild(btnClearActive);
+            suspectBuildingsEl.appendChild(selectorRow);
+
+            for (let i = 0; i < Math.min(5, count); i++) {
+                const row = document.createElement('div');
+                row.className = 'suspect-row';
+
+                const reqBWrap = document.createElement('label');
+                reqBWrap.className = 'req';
+                reqBWrap.title = 'Building must be correct to pass';
+                const reqB = document.createElement('input');
+                reqB.type = 'checkbox';
+                reqB.checked = Array.isArray(state.required.q5Building) ? !!state.required.q5Building[i] : true;
+                reqB.addEventListener('change', () => {
+                    if (!Array.isArray(state.required.q5Building)) state.required.q5Building = Array.from({ length: 5 }, () => true);
+                    state.required.q5Building[i] = !!reqB.checked;
+                    updateJsonOutput();
+                });
+                reqBWrap.appendChild(reqB);
+                reqBWrap.appendChild(document.createTextNode(' Req(B)'));
+
+                const reqWSWrap = document.createElement('label');
+                reqWSWrap.className = 'req';
+                reqWSWrap.title = 'Weapon seen must be correct to pass';
+                const reqWS = document.createElement('input');
+                reqWS.type = 'checkbox';
+                reqWS.checked = Array.isArray(state.required.q5WeaponSeen) ? !!state.required.q5WeaponSeen[i] : true;
+                reqWS.addEventListener('change', () => {
+                    if (!Array.isArray(state.required.q5WeaponSeen)) state.required.q5WeaponSeen = Array.from({ length: 5 }, () => true);
+                    state.required.q5WeaponSeen[i] = !!reqWS.checked;
+                    updateJsonOutput();
+                });
+                reqWSWrap.appendChild(reqWS);
+                reqWSWrap.appendChild(document.createTextNode(' Req(W?)'));
+
+                const reqWTWrap = document.createElement('label');
+                reqWTWrap.className = 'req';
+                reqWTWrap.title = 'Weapon type (last seen) must be correct to pass';
+                const reqWT = document.createElement('input');
+                reqWT.type = 'checkbox';
+                reqWT.checked = Array.isArray(state.required.q5WeaponType) ? !!state.required.q5WeaponType[i] : true;
+                reqWT.addEventListener('change', () => {
+                    if (!Array.isArray(state.required.q5WeaponType)) state.required.q5WeaponType = Array.from({ length: 5 }, () => true);
+                    state.required.q5WeaponType[i] = !!reqWT.checked;
+                    updateJsonOutput();
+                });
+                reqWTWrap.appendChild(reqWT);
+                reqWTWrap.appendChild(document.createTextNode(' Req(Type)'));
+
+                const lab = document.createElement('label');
+                lab.textContent = `Suspect ${i + 1}`;
+
+                const inp = document.createElement('input');
+                inp.type = 'text';
+                inp.readOnly = true;
+                const bList = Array.isArray(state.suspects[i].buildings) ? state.suspects[i].buildings : [];
+                inp.value = bList.join(', ');
+                inp.placeholder = 'Click markers A–T (multi)';
+
+                const ws = document.createElement('select');
+                ws.innerHTML = `
+                    <option value="">Weapon seen?</option>
+                    <option value="Y">Y</option>
+                    <option value="N">N</option>
+                `;
+                ws.value = state.suspects[i].weaponSeen || '';
+                ws.addEventListener('change', () => {
+                    state.suspects[i].weaponSeen = ws.value;
+                    if (ws.value === 'N') {
+                        state.suspects[i].weaponType = 'none';
+                    } else if (ws.value === '' && state.suspects[i].weaponType === 'none') {
+                        state.suspects[i].weaponType = '';
+                    }
+                    syncUIFromState();
+                    updateJsonOutput();
+                });
+
+                const wt = document.createElement('select');
+                wt.innerHTML = `
+                    <option value="">Weapon type (last seen)</option>
+                    <option value="pistol">Pistol</option>
+                    <option value="rifle">Rifle</option>
+                    <option value="knife">Knife</option>
+                    <option value="other">Other</option>
+                    <option value="multiple">Multiple weapons</option>
+                    <option value="none">No weapon</option>
+                `;
+                wt.value = state.suspects[i].weaponType || '';
+                wt.disabled = (state.suspects[i].weaponSeen === 'N');
+                wt.addEventListener('change', () => {
+                    state.suspects[i].weaponType = wt.value;
+                    syncUIFromState();
+                    updateJsonOutput();
+                });
+
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'btn btn-inline';
+                btn.textContent = 'Clear';
+                btn.addEventListener('click', () => {
+                    state.suspects[i] = { buildings: [], weaponSeen: '', weaponType: '' };
+                    syncUIFromState();
+                    renderMarkers();
+                    updateJsonOutput();
+                });
+
+                row.appendChild(lab);
+                row.appendChild(inp);
+                row.appendChild(ws);
+                row.appendChild(wt);
+                row.appendChild(reqBWrap);
+                row.appendChild(reqWSWrap);
+                row.appendChild(reqWTWrap);
+                row.appendChild(btn);
+                suspectBuildingsEl.appendChild(row);
+            }
+        }
+
+        function buildKeyExportFromSnapshot(version, angle, snap) {
+            const s = snap || {};
+            const q2 = s.q2 ?? '';
+            const suspects = Array.isArray(s.suspects) ? s.suspects : [];
+            const required = s.required || {};
+            const q7 = Array.isArray(s.q7) ? s.q7.slice() : [];
+
+            return {
+                schema: 'sos-ftx-scoring-key@5',
+                version,
+                angle,
+                required: {
+                    q1_angle: !!required.q1,
+                    q2_suspects: !!required.q2,
+                    q5_building: (() => {
+                        const count = q2 !== '' ? Number(q2) : 0;
+                        const arr = Array.isArray(required.q5Building) ? required.q5Building : Array.from({ length: 5 }, () => true);
+                        return arr.slice(0, Math.min(5, Math.max(0, count))).map(v => !!v);
+                    })(),
+                    // New: separate requirements for weapon seen vs weapon type
+                    q5_weaponSeen: (() => {
+                        const count = q2 !== '' ? Number(q2) : 0;
+                        const arr = Array.isArray(required.q5WeaponSeen) ? required.q5WeaponSeen : Array.from({ length: 5 }, () => true);
+                        return arr.slice(0, Math.min(5, Math.max(0, count))).map(v => !!v);
+                    })(),
+                    q5_weaponType: (() => {
+                        const count = q2 !== '' ? Number(q2) : 0;
+                        const arr = Array.isArray(required.q5WeaponType) ? required.q5WeaponType : Array.from({ length: 5 }, () => true);
+                        return arr.slice(0, Math.min(5, Math.max(0, count))).map(v => !!v);
+                    })(),
+                    // Back-compat: older app code uses q5_weapon to require both weapon fields together
+                    q5_weapon: (() => {
+                        const count = q2 !== '' ? Number(q2) : 0;
+                        const a = Array.isArray(required.q5WeaponSeen) ? required.q5WeaponSeen : Array.from({ length: 5 }, () => true);
+                        const b = Array.isArray(required.q5WeaponType) ? required.q5WeaponType : Array.from({ length: 5 }, () => true);
+                        const max = Math.min(5, Math.max(0, count));
+                        const out = [];
+                        for (let i = 0; i < max; i++) out.push(!!a[i] || !!b[i]);
+                        return out;
+                    })(),
+                    q7_canDetain: !!required.q7
+                },
+                answers: {
+                    q1_angle: angle, // auto in app
+                    q2_suspects: q2 !== '' ? Number(q2) : null,
+                    q5_suspects: (() => {
+                        const count = q2 !== '' ? Number(q2) : 0;
+                        if (!Number.isFinite(count) || count <= 0) return [];
+                        return suspects.slice(0, Math.min(5, count)).map(x => ({
+                            // Legacy single building (first acceptable), plus new ANY-of list
+                            building: (Array.isArray(x?.buildings) && x.buildings.length) ? x.buildings[0] : (x?.building || null),
+                            buildingAnyOf: (Array.isArray(x?.buildings) && x.buildings.length) ? x.buildings.slice() : (x?.building ? [x.building] : []),
+                            weaponSeen: x?.weaponSeen || null,
+                            weaponTypeLastSeen: x?.weaponType || null
+                        }));
+                    })(),
+                    // Legacy fields for older app code (first two suspects)
+                    q3_weaponSeen: suspects?.[0]?.weaponSeen || null,
+                    q4_weaponType: suspects?.[0]?.weaponType || null,
+                    q5_building: (Array.isArray(suspects?.[0]?.buildings) && suspects[0].buildings.length) ? suspects[0].buildings[0] : (suspects?.[0]?.building || null),
+                    q6_nextBuilding: (Array.isArray(suspects?.[1]?.buildings) && suspects[1].buildings.length) ? suspects[1].buildings[0] : (suspects?.[1]?.building || null),
+                    q7_canDetain: q7.slice()
+                }
+            };
+        }
+
+        function buildExportJson() {
+            // Bundle includes both possible tests (Part 1 and Part 2) for the selected version+angle.
+            persistCurrentKey();
+            const v = state.version;
+            const a = state.selectedAngle;
+            ensureKeyStore(v, a);
+            const part1 = state.keys[v][a]['1'];
+            const part2 = (state.hasPart2?.[v]?.[a]) ? state.keys[v][a]['2'] : null;
+
+            return {
+                schema: 'sos-ftx-scoring-bundle@1',
+                version: v,
+                angle: a,
+                hasPart2: !!(state.hasPart2?.[v]?.[a]),
+                parts: {
+                    '1': part1 ? buildKeyExportFromSnapshot(v, a, part1) : null,
+                    '2': part2 ? buildKeyExportFromSnapshot(v, a, part2) : null
+                },
+                buildings: state.buildings
+            };
+        }
+
+        function updateJsonOutput() {
+            persistCurrentKeyFromUI();
+            const obj = buildExportJson();
+            jsonOutput.textContent = JSON.stringify(obj, null, 2);
+        }
+
+        async function copyJson() {
+            updateJsonOutput();
+            await navigator.clipboard.writeText(jsonOutput.textContent);
+            copyNotice.classList.add('show');
+            setTimeout(() => copyNotice.classList.remove('show'), 2000);
+        }
+
+        function downloadJson() {
+            updateJsonOutput();
+            const blob = new Blob([jsonOutput.textContent], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `scoring-key-${state.version}.json`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        function loadFromJson() {
+            const raw = jsonImport.value.trim();
+            if (!raw) return;
+            let data;
+            try {
+                data = JSON.parse(raw);
+            } catch (e) {
+                alert('Invalid JSON.');
+                return;
+            }
+
+            if (!data || typeof data !== 'object') {
+                alert('Invalid data.');
+                return;
+            }
+
+            // New bundle format: sos-ftx-scoring-bundle@1
+            if (data.schema === 'sos-ftx-scoring-bundle@1' && data.parts) {
+                state.version = String(data.version || 'VA');
+                state.selectedAngle = String(data.angle || 'A');
+                state.testPart = '1';
+                state.hasPart2[state.version] = state.hasPart2[state.version] || { A: false, B: false, C: false };
+                state.hasPart2[state.version][state.selectedAngle] = !!data.hasPart2;
+
+                ensureKeyStore(state.version, state.selectedAngle);
+                const p1 = data.parts?.['1'];
+                const p2 = data.parts?.['2'];
+                state.keys[state.version][state.selectedAngle]['1'] = p1 ? {
+                    q2: String(p1?.answers?.q2_suspects ?? ''),
+                    suspects: (p1?.answers?.q5_suspects || []).slice(0, 5).map(s => ({
+                        buildings: Array.isArray(s?.buildingAnyOf) ? s.buildingAnyOf.slice() : (s?.building ? [s.building] : []),
+                        weaponSeen: s?.weaponSeen || '',
+                        weaponType: s?.weaponTypeLastSeen || ''
+                    })),
+                    q7: Array.isArray(p1?.answers?.q7_canDetain) ? p1.answers.q7_canDetain : [],
+                    required: {
+                        q1: !!p1?.required?.q1_angle,
+                        q2: !!p1?.required?.q2_suspects,
+                        q5Building: Array.isArray(p1?.required?.q5_building) ? p1.required.q5_building : Array.from({ length: 5 }, () => true),
+                        q5WeaponSeen: Array.isArray(p1?.required?.q5_weaponSeen) ? p1.required.q5_weaponSeen : (Array.isArray(p1?.required?.q5_weapon) ? p1.required.q5_weapon : Array.from({ length: 5 }, () => true)),
+                        q5WeaponType: Array.isArray(p1?.required?.q5_weaponType) ? p1.required.q5_weaponType : (Array.isArray(p1?.required?.q5_weapon) ? p1.required.q5_weapon : Array.from({ length: 5 }, () => true)),
+                        q7: !!p1?.required?.q7_canDetain
+                    }
+                } : null;
+                state.keys[state.version][state.selectedAngle]['2'] = p2 ? {
+                    q2: String(p2?.answers?.q2_suspects ?? ''),
+                    suspects: (p2?.answers?.q5_suspects || []).slice(0, 5).map(s => ({
+                        buildings: Array.isArray(s?.buildingAnyOf) ? s.buildingAnyOf.slice() : (s?.building ? [s.building] : []),
+                        weaponSeen: s?.weaponSeen || '',
+                        weaponType: s?.weaponTypeLastSeen || ''
+                    })),
+                    q7: Array.isArray(p2?.answers?.q7_canDetain) ? p2.answers.q7_canDetain : [],
+                    required: {
+                        q1: !!p2?.required?.q1_angle,
+                        q2: !!p2?.required?.q2_suspects,
+                        q5Building: Array.isArray(p2?.required?.q5_building) ? p2.required.q5_building : Array.from({ length: 5 }, () => true),
+                        q5WeaponSeen: Array.isArray(p2?.required?.q5_weaponSeen) ? p2.required.q5_weaponSeen : (Array.isArray(p2?.required?.q5_weapon) ? p2.required.q5_weapon : Array.from({ length: 5 }, () => true)),
+                        q5WeaponType: Array.isArray(p2?.required?.q5_weaponType) ? p2.required.q5_weaponType : (Array.isArray(p2?.required?.q5_weapon) ? p2.required.q5_weapon : Array.from({ length: 5 }, () => true)),
+                        q7: !!p2?.required?.q7_canDetain
+                    }
+                } : null;
+
+                if (data.buildings && typeof data.buildings === 'object') {
+                    state.buildings = data.buildings;
+                }
+
+                loadCurrentKey();
+                updateJsonOutput();
+                renderMarkers();
+                return;
+            }
+
+            // Legacy single-key import (treat as Part 1 for current version/angle)
+            const answers = data.answers || {};
+            const required = data.required || {};
+            state.version = String(data.version || 'VA');
+            state.selectedAngle = String(answers.q1_angle || 'A');
+            state.testPart = '1';
+            state.hasPart2[state.version] = state.hasPart2[state.version] || { A: false, B: false, C: false };
+            state.hasPart2[state.version][state.selectedAngle] = !!(state.hasPart2[state.version][state.selectedAngle]);
+            ensureKeyStore(state.version, state.selectedAngle);
+
+            const snap = {
+                q2: answers.q2_suspects != null ? String(answers.q2_suspects) : '',
+                suspects: Array.isArray(answers.q5_suspects)
+                    ? (answers.q5_suspects || []).slice(0, 5).map(s => ({
+                        buildings: Array.isArray(s?.buildingAnyOf) ? s.buildingAnyOf.slice() : (s?.building ? [s.building] : []),
+                        weaponSeen: s?.weaponSeen || '',
+                        weaponType: s?.weaponTypeLastSeen || ''
+                    }))
+                    : [
+                        { buildings: answers.q5_building ? [answers.q5_building] : [], weaponSeen: answers.q3_weaponSeen || '', weaponType: answers.q4_weaponType || '' },
+                        { buildings: answers.q6_nextBuilding ? [answers.q6_nextBuilding] : [], weaponSeen: '', weaponType: '' }
+                    ],
+                q7: Array.isArray(answers.q7_canDetain) ? answers.q7_canDetain : [],
+                required: (() => {
+                    const legacyQ5 = required.q5_suspects;
+                    const q5Fallback = legacyQ5 !== undefined ? !!legacyQ5 : true;
+                    const normalizeReqArray = (v) => {
+                        if (Array.isArray(v)) return v.slice(0, 5).map(x => !!x).concat(Array.from({ length: 5 }, () => true)).slice(0, 5);
+                        if (typeof v === 'boolean') return Array.from({ length: 5 }, () => v);
+                        return Array.from({ length: 5 }, () => q5Fallback);
+                    };
+                    return {
+                        q1: required.q1_angle !== undefined ? !!required.q1_angle : true,
+                        q2: required.q2_suspects !== undefined ? !!required.q2_suspects : true,
+                        q5Building: normalizeReqArray(required.q5_building),
+                        q5WeaponSeen: normalizeReqArray(required.q5_weaponSeen ?? required.q5_weapon),
+                        q5WeaponType: normalizeReqArray(required.q5_weaponType ?? required.q5_weapon),
+                        q7: required.q7_canDetain !== undefined ? !!required.q7_canDetain : true
+                    };
+                })()
+            };
+
+            state.keys[state.version][state.selectedAngle]['1'] = snap;
+
+            // Building markers if provided
+            if (data.buildings && typeof data.buildings === 'object') {
+                state.buildings = data.buildings;
+            }
+
+            loadCurrentKey();
+        }
+
+        // Event wiring
+        versionEl.addEventListener('change', onContextSelectorChange);
+        testPartEl.addEventListener('change', onContextSelectorChange);
+        selectedAngleEl.addEventListener('change', onContextSelectorChange);
+        hasPart2El.addEventListener('change', () => {
+            // toggle part-2 availability for the current version/angle
+            persistCurrentKeyFromUI();
+            state.hasPart2[state.version] = state.hasPart2[state.version] || { A: false, B: false, C: false };
+            state.hasPart2[state.version][state.selectedAngle] = !!hasPart2El.checked;
+
+            // If Part 2 is disabled while viewing Part 2, blank the editor state.
+            if (state.testPart === '2' && !state.hasPart2[state.version][state.selectedAngle]) {
+                applySnapshotToState(null);
+                syncUIFromState();
+            }
+            updateJsonOutput();
+        });
+        q2El.addEventListener('change', () => {
+            readCurrentUIIntoState();
+            // Clear any suspect details beyond the suspect count
+            const count = state.q2 !== '' ? Number(state.q2) : 0;
+            if (!Number.isFinite(count) || count <= 0) {
+                state.suspects = Array.from({ length: 5 }, () => ({ buildings: [], weaponSeen: '', weaponType: '' }));
+            } else {
+                for (let i = Math.min(5, count); i < 5; i++) {
+                    state.suspects[i] = { buildings: [], weaponSeen: '', weaponType: '' };
+                }
+            }
+            syncUIFromState();
+            renderMarkers();
+            updateJsonOutput();
+        });
+        q7Wrap.addEventListener('change', () => { readCurrentUIIntoState(); updateJsonOutput(); });
+        Object.values(reqEls).forEach(el => {
+            if (!el) return;
+            el.addEventListener('change', () => { readCurrentUIIntoState(); updateJsonOutput(); });
+        });
+
+        clearSuspectBuildingsBtn.addEventListener('click', () => {
+            state.suspects = Array.from({ length: 5 }, () => ({ buildings: [], weaponSeen: '', weaponType: '' }));
+            syncUIFromState();
+            renderMarkers();
+            updateJsonOutput();
+        });
+
+        copyBtn.addEventListener('click', copyJson);
+        downloadBtn.addEventListener('click', downloadJson);
+        loadBtn.addEventListener('click', loadFromJson);
+
+        markerModeEl.addEventListener('change', () => {
+            renderMarkers();
+            updateJsonOutput();
+        });
+        activeMarkerEl.addEventListener('change', () => {
+            renderMarkers();
+            updateJsonOutput();
+        });
+
+        mapContainer.addEventListener('click', (e) => {
+            if (markerModeEl.value !== 'edit') return;
+            // place active marker at click
+            const label = activeMarkerEl.value;
+            const pos = getMousePercentOnMap(e);
+            state.buildings[label] = { x: +pos.x.toFixed(2), y: +pos.y.toFixed(2) };
+            renderMarkers();
+            updateJsonOutput();
+        });
+
+        clearActiveMarkerBtn.addEventListener('click', () => {
+            const label = activeMarkerEl.value;
+            state.buildings[label] = null;
+            // clear answers if they referenced this marker
+            if (state.q5 === label) state.q5 = '';
+            if (state.q6 === label) state.q6 = '';
+            syncUIFromState();
+            renderMarkers();
+            updateJsonOutput();
+        });
+
+        clearAllMarkersBtn.addEventListener('click', () => {
+            BUILDING_LABELS.forEach(l => { state.buildings[l] = null; });
+            state.q5 = '';
+            state.q6 = '';
+            syncUIFromState();
+            renderMarkers();
+            updateJsonOutput();
+        });
+
+        // Initialize
+        ensureBuildings();
+        setActiveMarkerOptions();
+        updateJsonOutput();
+        renderMarkers();
+    </script>
+</body>
+</html>
+

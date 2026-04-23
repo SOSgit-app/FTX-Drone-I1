@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flight Path Editor - SOS FTX</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #1a1a2e;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #00ff00;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        .instructions {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .instructions span {
+            color: #ffaa00;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .map-section {
+            flex: 1;
+        }
+
+        .controls-section {
+            width: 350px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .map-container {
+            position: relative;
+            display: inline-block;
+            border: 3px solid #00ff00;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+            cursor: crosshair;
+        }
+
+        .map-container img {
+            display: block;
+            max-width: 100%;
+            max-height: 75vh;
+        }
+
+        .map-container svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        /* Path styling */
+        .editor-path {
+            fill: none;
+            stroke: #ff0000;
+            stroke-width: 0.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            filter: drop-shadow(0 0 1px rgba(255, 0, 0, 0.8));
+        }
+
+        .editor-path-preview {
+            fill: none;
+            stroke: rgba(255, 0, 0, 0.4);
+            stroke-width: 0.3;
+            stroke-dasharray: 1, 1;
+        }
+
+        /* Waypoint markers */
+        .waypoint {
+            fill: #00ff00;
+            stroke: #ffffff;
+            stroke-width: 0.3;
+            cursor: move;
+            pointer-events: all;
+            filter: drop-shadow(0 0 1px rgba(0, 255, 0, 0.8));
+        }
+
+        .waypoint:hover {
+            fill: #ffff00;
+        }
+
+        .waypoint.dragging {
+            fill: #ffff00;
+        }
+
+        .waypoint-label {
+            fill: #ffffff;
+            font-size: 2px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            text-anchor: middle;
+            pointer-events: none;
+            filter: drop-shadow(0 0 0.5px rgba(0, 0, 0, 1));
+        }
+
+        .waypoint-start {
+            fill: #00ff00;
+        }
+
+        .waypoint-end {
+            fill: #ff6600;
+        }
+
+        /* Controls */
+        .control-panel {
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .control-panel h3 {
+            color: #ffaa00;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+        }
+
+        .btn {
+            background: #1a3a1a;
+            color: #00ff00;
+            border: 2px solid #00ff00;
+            padding: 10px 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            width: 100%;
+            margin-bottom: 8px;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: #00ff00;
+            color: #0a0a0a;
+        }
+
+        .btn-danger {
+            border-color: #ff4444;
+            color: #ff4444;
+        }
+
+        .btn-danger:hover {
+            background: #ff4444;
+            color: #ffffff;
+        }
+
+        .btn-warning {
+            border-color: #ffaa00;
+            color: #ffaa00;
+        }
+
+        .btn-warning:hover {
+            background: #ffaa00;
+            color: #0a0a0a;
+        }
+
+        .btn-primary {
+            border-color: #4488ff;
+            color: #4488ff;
+        }
+
+        .btn-primary:hover {
+            background: #4488ff;
+            color: #ffffff;
+        }
+
+        /* Waypoint list */
+        .waypoint-list {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 10px;
+            font-size: 0.8rem;
+        }
+
+        .waypoint-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px;
+            border-bottom: 1px solid #222;
+        }
+
+        .waypoint-item:last-child {
+            border-bottom: none;
+        }
+
+        .waypoint-item .index {
+            color: #ffaa00;
+            width: 30px;
+        }
+
+        .waypoint-item .coords {
+            color: #00ff00;
+            flex: 1;
+        }
+
+        .waypoint-item .delete-btn {
+            background: none;
+            border: none;
+            color: #ff4444;
+            cursor: pointer;
+            font-size: 1rem;
+            padding: 0 5px;
+        }
+
+        .waypoint-item .delete-btn:hover {
+            color: #ff6666;
+        }
+
+        /* Code output */
+        .code-output {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 10px;
+            font-size: 0.75rem;
+            max-height: 150px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .copy-notice {
+            color: #00ff00;
+            font-size: 0.8rem;
+            text-align: center;
+            margin-top: 5px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .copy-notice.show {
+            opacity: 1;
+        }
+
+        /* Coordinates display */
+        .coords-display {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ff00;
+            padding: 10px 15px;
+            font-size: 0.9rem;
+            z-index: 100;
+        }
+
+        .coords-display span {
+            color: #ffaa00;
+        }
+
+        /* Animation preview - glowing dot */
+        .preview-drone {
+            fill: #ff0000;
+            opacity: 0;
+        }
+
+        .preview-drone.animating {
+            opacity: 1;
+            filter: 
+                drop-shadow(0 0 1px rgba(255, 0, 0, 1))
+                drop-shadow(0 0 2px rgba(255, 0, 0, 0.8));
+            animation: pulseDrone 0.4s ease-in-out infinite;
+        }
+
+        @keyframes pulseDrone {
+            0%, 100% { r: 0.8; }
+            50% { r: 1.2; }
+        }
+
+        .preview-drone-core {
+            fill: #ffffff;
+            opacity: 0;
+            filter: drop-shadow(0 0 0.5px rgba(255, 255, 255, 1));
+        }
+
+        .preview-drone-core.animating {
+            opacity: 1;
+            animation: pulseCore 0.4s ease-in-out infinite;
+        }
+
+        @keyframes pulseCore {
+            0%, 100% { r: 0.25; }
+            50% { r: 0.35; }
+        }
+
+        .preview-traveled-path {
+            fill: none;
+            stroke: #ff0000;
+            stroke-width: 0.4;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            filter: drop-shadow(0 0 0.5px rgba(255, 0, 0, 0.8));
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0a0a0a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00ff00;
+        }
+
+        /* Keyboard shortcuts help */
+        .shortcuts {
+            font-size: 0.75rem;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        .shortcuts kbd {
+            background: #333;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #00ff00;
+        }
+
+        /* Slider styling */
+        .slider-container {
+            padding: 5px 0;
+        }
+
+        #curvature-slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #0a0a0a;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        #curvature-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #00ff00;
+            cursor: pointer;
+            border: 2px solid #1a3a1a;
+            box-shadow: 0 0 8px rgba(0, 255, 0, 0.5);
+        }
+
+        #curvature-slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #00ff00;
+            cursor: pointer;
+            border: 2px solid #1a3a1a;
+            box-shadow: 0 0 8px rgba(0, 255, 0, 0.5);
+        }
+
+        .slider-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 0.75rem;
+            color: #666;
+        }
+
+        .slider-labels span:nth-child(2) {
+            color: #00ff00;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Flight Path Editor</h1>
+    <p class="instructions">
+        <span>Click</span> on the map to add waypoints | <span>Drag</span> waypoints to reposition | <span>Right-click</span> waypoint to delete
+    </p>
+
+    <div class="container">
+        <div class="map-section">
+            <div class="map-container" id="map-container">
+                <img src="flightpath-map.png" alt="Base Map" id="map-image">
+                <svg id="path-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <!-- Preview line from last point to cursor -->
+                    <path class="editor-path-preview" id="preview-path" d=""/>
+                    <!-- Main path -->
+                    <path class="editor-path" id="editor-path" d=""/>
+                    <!-- Traveled path during animation -->
+                    <path class="preview-traveled-path" id="preview-traveled-path" d=""/>
+                    <!-- Waypoint markers will be added here -->
+                    <g id="waypoints-group"></g>
+                    <!-- Preview drone for animation - layered glow -->
+                    <circle class="preview-drone" id="preview-drone" cx="0" cy="0" r="0.8"/>
+                    <circle class="preview-drone-core" id="preview-drone-core" cx="0" cy="0" r="0.25"/>
+                </svg>
+            </div>
+        </div>
+
+        <div class="controls-section">
+            <div class="control-panel">
+                <h3>Waypoints</h3>
+                <div class="waypoint-list" id="waypoint-list">
+                    <p style="color: #666; text-align: center;">Click on map to add waypoints</p>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <h3>Actions</h3>
+                <button class="btn btn-primary" onclick="previewAnimation()">▶ Preview Animation</button>
+                <button class="btn btn-warning" onclick="undoLastPoint()">↩ Undo Last Point</button>
+                <button class="btn btn-danger" onclick="clearAllPoints()">✕ Clear All Points</button>
+            </div>
+
+            <div class="control-panel">
+                <h3>Path Curvature</h3>
+                <div class="slider-container">
+                    <input type="range" id="curvature-slider" min="0" max="10" step="0.5" value="3" 
+                           oninput="updateCurvature(this.value)">
+                    <div class="slider-labels">
+                        <span>Straight</span>
+                        <span id="curvature-value">3.0</span>
+                        <span>Curved</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <h3>Export Code</h3>
+                <div class="code-output" id="code-output">const flightPathWaypoints = [
+    // Click on map to add waypoints
+];</div>
+                <button class="btn" onclick="copyCode()">📋 Copy to Clipboard</button>
+                <p class="copy-notice" id="copy-notice">Copied!</p>
+            </div>
+
+            <div class="control-panel">
+                <h3>Import Existing Path</h3>
+                <button class="btn" onclick="loadCurrentPath()">Load Current Path</button>
+                <p class="shortcuts">Loads the path currently defined in index.html</p>
+            </div>
+
+            <div class="shortcuts">
+                <p><kbd>Ctrl+Z</kbd> Undo | <kbd>Ctrl+C</kbd> Copy code | <kbd>P</kbd> Preview</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="coords-display" id="coords-display">
+        Mouse: <span id="mouse-coords">0, 0</span>
+    </div>
+
+    <script>
+        // State
+        let waypoints = [];
+        let isDragging = false;
+        let dragIndex = -1;
+        let isAnimating = false;
+        let curvature = 3; // Controls path smoothness (0 = straight lines, 10 = very curved)
+
+        // DOM Elements
+        const mapContainer = document.getElementById('map-container');
+        const mapImage = document.getElementById('map-image');
+        const pathSvg = document.getElementById('path-svg');
+        const editorPath = document.getElementById('editor-path');
+        const previewPath = document.getElementById('preview-path');
+        const waypointsGroup = document.getElementById('waypoints-group');
+        const waypointList = document.getElementById('waypoint-list');
+        const codeOutput = document.getElementById('code-output');
+        const mouseCoords = document.getElementById('mouse-coords');
+        const previewDrone = document.getElementById('preview-drone');
+
+        // Get mouse position as percentage of image
+        function getMousePercent(e) {
+            const rect = mapImage.getBoundingClientRect();
+            const x = ((e.clientX - rect.left) / rect.width) * 100;
+            const y = ((e.clientY - rect.top) / rect.height) * 100;
+            return {
+                x: Math.max(0, Math.min(100, x)),
+                y: Math.max(0, Math.min(100, y))
+            };
+        }
+
+        // Generate smooth path
+        function generatePathD(points) {
+            if (points.length < 2) return '';
+            
+            function catmullRomToBezier(p0, p1, p2, p3, tension = 0.5) {
+                const cp1x = p1[0] + (p2[0] - p0[0]) / 6 * tension;
+                const cp1y = p1[1] + (p2[1] - p0[1]) / 6 * tension;
+                const cp2x = p2[0] - (p3[0] - p1[0]) / 6 * tension;
+                const cp2y = p2[1] - (p3[1] - p1[1]) / 6 * tension;
+                return { cp1x, cp1y, cp2x, cp2y };
+            }
+            
+            let d = `M ${points[0][0]} ${points[0][1]}`;
+            
+            if (points.length === 2) {
+                d += ` L ${points[1][0]} ${points[1][1]}`;
+                return d;
+            }
+            
+            const extended = [
+                points[0],
+                ...points,
+                points[points.length - 1]
+            ];
+            
+            for (let i = 1; i < extended.length - 2; i++) {
+                const p0 = extended[i - 1];
+                const p1 = extended[i];
+                const p2 = extended[i + 1];
+                const p3 = extended[i + 2];
+                
+                const { cp1x, cp1y, cp2x, cp2y } = catmullRomToBezier(p0, p1, p2, p3, curvature);
+                
+                d += ` C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)}, ${cp2x.toFixed(2)} ${cp2y.toFixed(2)}, ${p2[0]} ${p2[1]}`;
+            }
+            
+            return d;
+        }
+
+        // Update the display
+        function updateDisplay() {
+            // Update path
+            const pathD = generatePathD(waypoints);
+            editorPath.setAttribute('d', pathD);
+
+            // Update waypoint markers
+            waypointsGroup.innerHTML = '';
+            waypoints.forEach((point, index) => {
+                // Create circle - small size for viewBox 0-100
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', point[0]);
+                circle.setAttribute('cy', point[1]);
+                circle.setAttribute('r', '1.5');
+                circle.setAttribute('class', 'waypoint' + 
+                    (index === 0 ? ' waypoint-start' : '') +
+                    (index === waypoints.length - 1 && waypoints.length > 1 ? ' waypoint-end' : ''));
+                circle.setAttribute('data-index', index);
+                circle.style.pointerEvents = 'all';
+                
+                // Drag handlers
+                circle.addEventListener('mousedown', (e) => {
+                    if (e.button === 0) {
+                        e.stopPropagation();
+                        isDragging = true;
+                        dragIndex = index;
+                        circle.classList.add('dragging');
+                    }
+                });
+
+                // Right-click to delete
+                circle.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    deleteWaypoint(index);
+                });
+
+                waypointsGroup.appendChild(circle);
+
+                // Create label - small offset for viewBox 0-100
+                const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                label.setAttribute('x', point[0]);
+                label.setAttribute('y', point[1] - 2.5);
+                label.setAttribute('class', 'waypoint-label');
+                label.textContent = index === 0 ? 'START' : (index === waypoints.length - 1 ? 'EXIT' : index);
+                waypointsGroup.appendChild(label);
+            });
+
+            // Update waypoint list
+            if (waypoints.length === 0) {
+                waypointList.innerHTML = '<p style="color: #666; text-align: center;">Click on map to add waypoints</p>';
+            } else {
+                waypointList.innerHTML = waypoints.map((point, index) => `
+                    <div class="waypoint-item">
+                        <span class="index">${index === 0 ? 'ST' : (index === waypoints.length - 1 ? 'EX' : index)}</span>
+                        <span class="coords">[${point[0].toFixed(1)}, ${point[1].toFixed(1)}]</span>
+                        <button class="delete-btn" onclick="deleteWaypoint(${index})">×</button>
+                    </div>
+                `).join('');
+            }
+
+            // Update code output
+            updateCodeOutput();
+        }
+
+        // Update code output
+        function updateCodeOutput() {
+            if (waypoints.length === 0) {
+                codeOutput.textContent = `const flightPathWaypoints = [
+    // Click on map to add waypoints
+];
+
+const pathCurvature = ${curvature.toFixed(1)};`;
+            } else {
+                const waypointStrings = waypoints.map((point, index) => {
+                    let comment = '';
+                    if (index === 0) comment = '  // START';
+                    else if (index === waypoints.length - 1) comment = '  // EXIT';
+                    return `    [${point[0].toFixed(0)}, ${point[1].toFixed(0)}],${comment}`;
+                });
+                codeOutput.textContent = `const flightPathWaypoints = [
+${waypointStrings.join('\n')}
+];
+
+const pathCurvature = ${curvature.toFixed(1)};`;
+            }
+        }
+
+        // Add waypoint
+        function addWaypoint(x, y) {
+            waypoints.push([x, y]);
+            updateDisplay();
+        }
+
+        // Delete waypoint
+        function deleteWaypoint(index) {
+            waypoints.splice(index, 1);
+            updateDisplay();
+        }
+
+        // Undo last point
+        function undoLastPoint() {
+            if (waypoints.length > 0) {
+                waypoints.pop();
+                updateDisplay();
+            }
+        }
+
+        // Clear all points
+        function clearAllPoints() {
+            if (waypoints.length > 0 && confirm('Clear all waypoints?')) {
+                waypoints = [];
+                updateDisplay();
+            }
+        }
+
+        // Update curvature
+        function updateCurvature(value) {
+            curvature = parseFloat(value);
+            document.getElementById('curvature-value').textContent = curvature.toFixed(1);
+            updateDisplay();
+        }
+
+        // Copy code to clipboard
+        function copyCode() {
+            navigator.clipboard.writeText(codeOutput.textContent).then(() => {
+                const notice = document.getElementById('copy-notice');
+                notice.classList.add('show');
+                setTimeout(() => notice.classList.remove('show'), 2000);
+            });
+        }
+
+        // Preview animation with glowing dot
+        function previewAnimation() {
+            if (waypoints.length < 2 || isAnimating) return;
+            
+            isAnimating = true;
+            const pathD = generatePathD(waypoints);
+            editorPath.setAttribute('d', pathD);
+            
+            const pathLength = editorPath.getTotalLength();
+            const duration = 6000; // Slower for better effect
+            const startTime = performance.now();
+            
+            const previewDroneCore = document.getElementById('preview-drone-core');
+            const previewTraveledPath = document.getElementById('preview-traveled-path');
+            
+            // Clear traveled path
+            previewTraveledPath.setAttribute('d', '');
+            
+            // Start animation
+            previewDrone.classList.add('animating');
+            previewDroneCore.classList.add('animating');
+            
+            // Store traveled points
+            let traveledPoints = [];
+            
+            function animate(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // Smooth ease-in-out
+                const easedProgress = progress < 0.5 
+                    ? 2 * progress * progress 
+                    : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+                
+                const point = editorPath.getPointAtLength(pathLength * easedProgress);
+                
+                // Update drone position
+                previewDrone.setAttribute('cx', point.x);
+                previewDrone.setAttribute('cy', point.y);
+                previewDroneCore.setAttribute('cx', point.x);
+                previewDroneCore.setAttribute('cy', point.y);
+                
+                // Build traveled path
+                traveledPoints.push([point.x, point.y]);
+                if (traveledPoints.length > 1) {
+                    let d = `M ${traveledPoints[0][0]} ${traveledPoints[0][1]}`;
+                    for (let i = 1; i < traveledPoints.length; i++) {
+                        d += ` L ${traveledPoints[i][0]} ${traveledPoints[i][1]}`;
+                    }
+                    previewTraveledPath.setAttribute('d', d);
+                }
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    // Animation complete
+                    setTimeout(() => {
+                        previewDrone.classList.remove('animating');
+                        previewDroneCore.classList.remove('animating');
+                        previewTraveledPath.setAttribute('d', '');
+                        isAnimating = false;
+                    }, 1000);
+                }
+            }
+            
+            requestAnimationFrame(animate);
+        }
+
+        // Load current path from index.html
+        function loadCurrentPath() {
+            // Pre-defined path from the main file
+            const currentPath = [
+                [88, 28],
+                [75, 35],
+                [65, 42],
+                [55, 48],
+                [45, 52],
+                [38, 50],
+                [30, 45],
+                [20, 35],
+                [10, 20],
+            ];
+            
+            waypoints = [...currentPath];
+            updateDisplay();
+        }
+
+        // Event Listeners
+        mapContainer.addEventListener('click', (e) => {
+            if (isDragging || isAnimating) return;
+            if (e.target.classList.contains('waypoint')) return;
+            
+            const pos = getMousePercent(e);
+            addWaypoint(pos.x, pos.y);
+        });
+
+        mapContainer.addEventListener('mousemove', (e) => {
+            const pos = getMousePercent(e);
+            mouseCoords.textContent = `${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}`;
+            
+            // Update preview line
+            if (waypoints.length > 0 && !isDragging) {
+                const lastPoint = waypoints[waypoints.length - 1];
+                previewPath.setAttribute('d', `M ${lastPoint[0]} ${lastPoint[1]} L ${pos.x} ${pos.y}`);
+            }
+            
+            // Handle dragging
+            if (isDragging && dragIndex >= 0) {
+                waypoints[dragIndex] = [pos.x, pos.y];
+                updateDisplay();
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                dragIndex = -1;
+                document.querySelectorAll('.waypoint').forEach(w => w.classList.remove('dragging'));
+            }
+        });
+
+        mapContainer.addEventListener('mouseleave', () => {
+            previewPath.setAttribute('d', '');
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'z') {
+                e.preventDefault();
+                undoLastPoint();
+            }
+            if (e.ctrlKey && e.key === 'c' && !window.getSelection().toString()) {
+                e.preventDefault();
+                copyCode();
+            }
+            if (e.key === 'p' || e.key === 'P') {
+                if (document.activeElement.tagName !== 'INPUT') {
+                    previewAnimation();
+                }
+            }
+        });
+
+        // Prevent context menu on map
+        mapContainer.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+        });
+
+        // Initialize
+        updateDisplay();
+    </script>
+</body>
+</html>

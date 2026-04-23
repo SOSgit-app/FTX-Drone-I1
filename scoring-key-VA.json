@@ -1,0 +1,122 @@
+{
+  "schema": "sos-ftx-scoring-key@5",
+  "version": "VA",
+  "required": {
+    "q1_angle": true,
+    "q2_suspects": true,
+    "q5_building": [
+      true,
+      true
+    ],
+    "q5_weapon": [
+      true,
+      true
+    ],
+    "q7_canDetain": true
+  },
+  "answers": {
+    "q1_angle": "A",
+    "q2_suspects": 2,
+    "q5_suspects": [
+      {
+        "building": "A",
+        "weaponSeen": "Y",
+        "weaponTypeLastSeen": "pistol"
+      },
+      {
+        "building": "G",
+        "weaponSeen": "N",
+        "weaponTypeLastSeen": "none"
+      }
+    ],
+    "q3_weaponSeen": "Y",
+    "q4_weaponType": "pistol",
+    "q5_building": "A",
+    "q6_nextBuilding": "G",
+    "q7_canDetain": [
+      "A"
+    ]
+  },
+  "buildings": {
+    "A": {
+      "x": 19.55,
+      "y": 42.87
+    },
+    "B": {
+      "x": 30.45,
+      "y": 33.91
+    },
+    "C": {
+      "x": 40.22,
+      "y": 26.17
+    },
+    "D": {
+      "x": 50.16,
+      "y": 18.84
+    },
+    "E": {
+      "x": 18.75,
+      "y": 61.2
+    },
+    "F": {
+      "x": 27.4,
+      "y": 56.52
+    },
+    "G": {
+      "x": 37.66,
+      "y": 48.98
+    },
+    "H": {
+      "x": 46.79,
+      "y": 39
+    },
+    "I": {
+      "x": 54.97,
+      "y": 33.3
+    },
+    "J": {
+      "x": 63.3,
+      "y": 26.58
+    },
+    "K": {
+      "x": 34.13,
+      "y": 84.01
+    },
+    "L": {
+      "x": 47.6,
+      "y": 61.61
+    },
+    "M": {
+      "x": 57.21,
+      "y": 55.3
+    },
+    "N": {
+      "x": 67.15,
+      "y": 49.19
+    },
+    "O": {
+      "x": 59.62,
+      "y": 64.46
+    },
+    "P": {
+      "x": 71.96,
+      "y": 62.32
+    },
+    "Q": {
+      "x": 81.09,
+      "y": 55.6
+    },
+    "R": {
+      "x": 86.22,
+      "y": 51.12
+    },
+    "S": {
+      "x": 66.51,
+      "y": 6.01
+    },
+    "T": {
+      "x": 69.55,
+      "y": 12.32
+    }
+  }
+}

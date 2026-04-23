@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drone Zone Editor - SOS FTX</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #1a1a2e;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #00ff00;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        .instructions {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .instructions span {
+            color: #ffaa00;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .map-section {
+            flex: 1;
+        }
+
+        .controls-section {
+            width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .map-container {
+            position: relative;
+            display: inline-block;
+            border: 3px solid #00ff00;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+            cursor: crosshair;
+        }
+
+        .map-container img {
+            display: block;
+            max-width: 100%;
+            max-height: 75vh;
+        }
+
+        .map-container svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Zone styling */
+        .zone {
+            fill-opacity: 0.3;
+            stroke-width: 0.3;
+            cursor: move;
+            transition: fill-opacity 0.2s;
+        }
+
+        .zone:hover {
+            fill-opacity: 0.5;
+        }
+
+        .zone.dragging {
+            fill-opacity: 0.6;
+        }
+
+        .zone-a {
+            fill: #ff4444;
+            stroke: #ff4444;
+        }
+
+        .zone-b {
+            fill: #ffaa00;
+            stroke: #ffaa00;
+        }
+
+        .zone-c {
+            fill: #00ff00;
+            stroke: #00ff00;
+        }
+
+        .zone-label {
+            font-family: 'Courier New', monospace;
+            font-size: 3px;
+            font-weight: bold;
+            text-anchor: middle;
+            dominant-baseline: middle;
+            pointer-events: none;
+            fill: #ffffff;
+            filter: drop-shadow(0 0 1px rgba(0, 0, 0, 1));
+        }
+
+        /* Resize handles */
+        .resize-handle {
+            fill: #ffffff;
+            stroke: #000000;
+            stroke-width: 0.2;
+            cursor: nwse-resize;
+            pointer-events: all;
+        }
+
+        .resize-handle:hover {
+            fill: #ffff00;
+        }
+
+        /* Controls */
+        .control-panel {
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .control-panel h3 {
+            color: #ffaa00;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+        }
+
+        .btn {
+            background: #1a3a1a;
+            color: #00ff00;
+            border: 2px solid #00ff00;
+            padding: 10px 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            width: 100%;
+            margin-bottom: 8px;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: #00ff00;
+            color: #0a0a0a;
+        }
+
+        .btn-danger {
+            border-color: #ff4444;
+            color: #ff4444;
+        }
+
+        .btn-danger:hover {
+            background: #ff4444;
+            color: #ffffff;
+        }
+
+        /* Zone info */
+        .zone-info {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .zone-info h4 {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .zone-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+        }
+
+        .zone-color.a { background: #ff4444; }
+        .zone-color.b { background: #ffaa00; }
+        .zone-color.c { background: #00ff00; }
+
+        .zone-coords {
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        .zone-coords span {
+            color: #00ff00;
+        }
+
+        /* Shape selector */
+        .shape-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .shape-btn {
+            flex: 1;
+            padding: 8px;
+            background: #0a0a0a;
+            border: 2px solid #333;
+            color: #888;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .shape-btn.active {
+            border-color: #00ff00;
+            color: #00ff00;
+        }
+
+        .shape-btn:hover {
+            border-color: #00ff00;
+        }
+
+        /* Code output */
+        .code-output {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 10px;
+            font-size: 0.7rem;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .copy-notice {
+            color: #00ff00;
+            font-size: 0.8rem;
+            text-align: center;
+            margin-top: 5px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .copy-notice.show {
+            opacity: 1;
+        }
+
+        /* Coordinates display */
+        .coords-display {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ff00;
+            padding: 10px 15px;
+            font-size: 0.9rem;
+            z-index: 100;
+        }
+
+        .coords-display span {
+            color: #ffaa00;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0a0a0a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00ff00;
+        }
+
+        /* Keyboard shortcuts help */
+        .shortcuts {
+            font-size: 0.75rem;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        .shortcuts kbd {
+            background: #333;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #00ff00;
+        }
+
+        /* Environmental Effects */
+        .effect {
+            cursor: move;
+            transition: opacity 0.2s;
+        }
+
+        .effect:hover {
+            opacity: 0.8;
+        }
+
+
+        /* PNG Sequence animations */
+        .png-sequence {
+            pointer-events: all;
+            image-rendering: crisp-edges;
+            cursor: move;
+        }
+        
+        .png-sequence:hover {
+            filter: drop-shadow(0 0 3px rgba(0, 255, 0, 0.5));
+        }
+
+        /* Fog overlay - layered clouds */
+        .fog-layer {
+            pointer-events: none;
+        }
+
+        .fog-cloud-1 {
+            fill: url(#fog-gradient);
+            opacity: 0.5;
+            animation: fogDrift1 20s ease-in-out infinite;
+        }
+
+        .fog-cloud-2 {
+            fill: url(#fog-gradient);
+            opacity: 0.4;
+            animation: fogDrift2 25s ease-in-out infinite;
+        }
+
+        .fog-cloud-3 {
+            fill: url(#fog-gradient);
+            opacity: 0.6;
+            animation: fogDrift3 18s ease-in-out infinite;
+        }
+
+        @keyframes fogDrift1 {
+            0%, 100% { opacity: 0.4; transform: translateX(0); }
+            50% { opacity: 0.6; transform: translateX(-2px); }
+        }
+
+        @keyframes fogDrift2 {
+            0%, 100% { opacity: 0.3; transform: translateX(0); }
+            50% { opacity: 0.5; transform: translateX(2px); }
+        }
+
+        @keyframes fogDrift3 {
+            0%, 100% { opacity: 0.5; transform: translateX(0); }
+            50% { opacity: 0.7; transform: translateX(-1px); }
+        }
+
+        /* Rain overlay */
+        .effect-rain-overlay {
+            pointer-events: none;
+        }
+
+        .rain-line {
+            stroke-linecap: round;
+            fill: none;
+        }
+
+        .rain-heavy {
+            animation: rainFallHeavy 0.4s linear infinite;
+            stroke: rgba(180, 200, 230, 0.75);
+            stroke-width: 0.14;
+        }
+
+        .rain-medium {
+            animation: rainFallMedium 0.55s linear infinite;
+            stroke: rgba(180, 200, 230, 0.55);
+            stroke-width: 0.11;
+        }
+
+        .rain-light {
+            animation: rainFallLight 0.7s linear infinite;
+            stroke: rgba(180, 200, 230, 0.35);
+            stroke-width: 0.08;
+        }
+
+        @keyframes rainFallHeavy {
+            0% { 
+                transform: translateY(-120%); 
+                opacity: 0; 
+            }
+            5% { 
+                opacity: 0.9; 
+            }
+            95% { 
+                opacity: 0.7; 
+            }
+            100% { 
+                transform: translateY(120%); 
+                opacity: 0; 
+            }
+        }
+
+        @keyframes rainFallMedium {
+            0% { 
+                transform: translateY(-120%); 
+                opacity: 0; 
+            }
+            8% { 
+                opacity: 0.7; 
+            }
+            95% { 
+                opacity: 0.5; 
+            }
+            100% { 
+                transform: translateY(120%); 
+                opacity: 0; 
+            }
+        }
+
+        @keyframes rainFallLight {
+            0% { 
+                transform: translateY(-120%); 
+                opacity: 0; 
+            }
+            10% { 
+                opacity: 0.5; 
+            }
+            95% { 
+                opacity: 0.3; 
+            }
+            100% { 
+                transform: translateY(120%); 
+                opacity: 0; 
+            }
+        }
+
+        .effect-label {
+            font-family: 'Courier New', monospace;
+            font-size: 2px;
+            font-weight: bold;
+            fill: #ffffff;
+            text-anchor: middle;
+            pointer-events: none;
+            filter: drop-shadow(0 0 0.5px rgba(0, 0, 0, 1));
+        }
+
+        /* Effect buttons */
+        .effect-type-btn {
+            padding: 8px 12px;
+            margin: 3px;
+            background: #0a0a0a;
+            border: 2px solid #333;
+            color: #888;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .effect-type-btn.active {
+            border-color: #00ff00;
+            color: #00ff00;
+            background: #1a3a1a;
+        }
+
+        .effect-type-btn:hover {
+            border-color: #00ff00;
+        }
+
+        .effect-list {
+            max-height: 150px;
+            overflow-y: auto;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 8px;
+            font-size: 0.8rem;
+        }
+
+        .effect-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px;
+            border-bottom: 1px solid #222;
+            margin-bottom: 5px;
+        }
+
+        .effect-item:last-child {
+            border-bottom: none;
+        }
+
+        .effect-item .type {
+            color: #ffaa00;
+            font-weight: bold;
+        }
+
+        .effect-item .coords {
+            color: #00ff00;
+            font-size: 0.75rem;
+        }
+
+        .effect-item .delete {
+            background: none;
+            border: none;
+            color: #ff4444;
+            cursor: pointer;
+            font-size: 1rem;
+            padding: 0 5px;
+        }
+
+        .effect-item .delete:hover {
+            color: #ff6666;
+        }
+    </style>
+</head>
+<body>
+    <h1>Drone Zone Editor + Environmental Effects</h1>
+    <p class="instructions">
+        <span>Drag</span> zones & animations to reposition | <span>Click</span> map to place smoke/fire | <span>Toggle</span> fog/rain for full map | <span>Right-click</span> to remove
+    </p>
+
+    <div class="container">
+        <div class="map-section">
+            <div class="map-container" id="map-container">
+                <img src="newsimcity.png" alt="Base Map" id="map-image">
+                <svg id="zone-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <defs>
+                        <!-- Fog gradient (soft white/gray) -->
+                        <radialGradient id="fog-gradient">
+                            <stop offset="0%" style="stop-color:#e8e8e8;stop-opacity:0.6" />
+                            <stop offset="30%" style="stop-color:#c8c8c8;stop-opacity:0.5" />
+                            <stop offset="60%" style="stop-color:#a8a8a8;stop-opacity:0.3" />
+                            <stop offset="100%" style="stop-color:#888;stop-opacity:0" />
+                        </radialGradient>
+                    </defs>
+                    
+                    <!-- Environmental effects (drawn first, behind zones) -->
+                    <g id="effects-group"></g>
+                    
+                    <!-- Zone A - Closest -->
+                    <ellipse class="zone zone-a" id="zone-a" cx="50" cy="50" rx="8" ry="6"/>
+                    <text class="zone-label" id="label-a" x="50" y="50">A</text>
+                    
+                    <!-- Zone B - Medium -->
+                    <ellipse class="zone zone-b" id="zone-b" cx="50" cy="35" rx="12" ry="8"/>
+                    <text class="zone-label" id="label-b" x="50" y="35">B</text>
+                    
+                    <!-- Zone C - Furthest -->
+                    <ellipse class="zone zone-c" id="zone-c" cx="50" cy="20" rx="18" ry="10"/>
+                    <text class="zone-label" id="label-c" x="50" y="20">C</text>
+                    
+                    <!-- Resize handles (shown for selected zone) -->
+                    <g id="resize-handles" style="display: none;">
+                        <circle class="resize-handle" id="handle-top" cx="0" cy="0" r="1"/>
+                        <circle class="resize-handle" id="handle-right" cx="0" cy="0" r="1"/>
+                        <circle class="resize-handle" id="handle-bottom" cx="0" cy="0" r="1"/>
+                        <circle class="resize-handle" id="handle-left" cx="0" cy="0" r="1"/>
+                    </g>
+                </svg>
+            </div>
+        </div>
+
+        <div class="controls-section">
+            <div class="control-panel">
+                <h3>Zone A - Closest Position</h3>
+                <div class="zone-info">
+                    <h4><div class="zone-color a"></div> High Detail / High Noise</h4>
+                    <div class="zone-coords">
+                        Center: <span id="zone-a-center">50, 50</span><br>
+                        Size: <span id="zone-a-size">8 x 6</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <h3>Zone B - Medium Position</h3>
+                <div class="zone-info">
+                    <h4><div class="zone-color b"></div> Medium Detail / Moderate Noise</h4>
+                    <div class="zone-coords">
+                        Center: <span id="zone-b-center">50, 35</span><br>
+                        Size: <span id="zone-b-size">12 x 8</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <h3>Zone C - Furthest Position</h3>
+                <div class="zone-info">
+                    <h4><div class="zone-color c"></div> Low Detail / Undetectable</h4>
+                    <div class="zone-coords">
+                        Center: <span id="zone-c-center">50, 20</span><br>
+                        Size: <span id="zone-c-size">18 x 10</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <h3>Environmental Effects</h3>
+                <p style="color: #888; font-size: 0.85rem; margin-bottom: 10px;">Point-based (click to place):</p>
+                <div style="display: flex; flex-wrap: wrap; gap: 5px;">
+                    <button class="effect-type-btn" data-effect="smoke" onclick="selectEffectType('smoke')">💨 Smoke Plume</button>
+                    <button class="effect-type-btn" data-effect="fire" onclick="selectEffectType('fire')">🔥 Fire/Explosion</button>
+                </div>
+                <div style="margin-top: 10px; padding: 8px; background: #0a0a0a; border: 1px solid #333; border-radius: 4px;">
+                    <label style="color: #00ff00; font-size: 0.8rem; margin-bottom: 8px; display: block;">
+                        Effect Scale:
+                    </label>
+                    <input type="number" id="effect-size-input" min="1" max="50" step="0.5" value="15.0" 
+                           style="width: 100%; padding: 8px; background: #1a1a2e; border: 2px solid #00ff00; color: #00ff00; font-family: 'Courier New', monospace; font-size: 1rem; text-align: center;"
+                           oninput="updateEffectSize(this.value)">
+                    <div style="font-size: 0.7rem; color: #666; margin-top: 5px; text-align: center;">
+                        Type any number (1-50)
+                    </div>
+                </div>
+                <p style="color: #666; font-size: 0.7rem; margin-top: 5px;">High-quality PNG sequence animations (30 fps)</p>
+                <p style="color: #888; font-size: 0.85rem; margin: 15px 0 5px 0;">Weather overlays (full map):</p>
+                <div style="display: flex; flex-wrap: wrap; gap: 5px;">
+                    <button class="effect-type-btn" data-effect="fog" onclick="toggleFog()" id="fog-toggle">🌫️ Fog/Haze</button>
+                    <button class="effect-type-btn" data-effect="rain" onclick="toggleRain()" id="rain-toggle">🌧️ Rain Storm</button>
+                </div>
+                <p style="color: #666; font-size: 0.7rem; margin-top: 5px;">Covers entire map with weather conditions</p>
+                <button class="btn btn-danger" onclick="clearAllEffects()" style="margin-top: 10px;">✕ Clear All Effects</button>
+            </div>
+
+            <div class="control-panel">
+                <h3>Active Effects</h3>
+                <div class="effect-list" id="effect-list">
+                    <p style="color: #666; text-align: center; font-style: italic;">No effects added</p>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <h3>Actions</h3>
+                <button class="btn" onclick="resetZones()">↩ Reset to Default</button>
+                <button class="btn" onclick="copyCode()">📋 Copy Code</button>
+            </div>
+
+            <div class="control-panel">
+                <h3>Export Code</h3>
+                <div class="code-output" id="code-output"></div>
+                <p class="copy-notice" id="copy-notice">Copied!</p>
+            </div>
+
+            <div class="shortcuts">
+                <p><kbd>R</kbd> Reset all | <kbd>C</kbd> Copy code | <kbd>Right-click</kbd> smoke/fire to remove</p>
+                <p style="margin-top: 5px; color: #666; font-size: 0.7rem;">
+                    ✨ All effects are animated! Smoke rises, fire flickers, fog drifts, rain falls
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="coords-display" id="coords-display">
+        Mouse: <span id="mouse-coords">0, 0</span>
+    </div>
+
+    <script>
+        // Zone data
+        let zones = {
+            A: { cx: 50, cy: 50, rx: 8, ry: 6 },
+            B: { cx: 50, cy: 35, rx: 12, ry: 8 },
+            C: { cx: 50, cy: 20, rx: 18, ry: 10 }
+        };
+
+        const defaultZones = JSON.parse(JSON.stringify(zones));
+
+        // Environmental effects data
+        let effects = [];
+        let selectedEffectType = null;
+        let effectIdCounter = 0;
+        let effectSize = 15.0; // Default size for effects
+        let fogActive = false;
+        let rainActive = false;
+        let draggingEffect = null;
+        let effectDragOffset = { x: 0, y: 0 };
+        
+        // PNG sequence animation data
+        const pngSequences = {
+            fire: {
+                folder: 'footagecrate-ground-fire-10',
+                startFrame: 104,
+                endFrame: 201,
+                fps: 30
+            },
+            smoke: {
+                folder: 'FootageCrate-Smoke_Plume_Accent_2',
+                startFrame: 38,
+                // Folder currently contains frame_001..frame_119
+                endFrame: 119,
+                fps: 30
+            }
+        };
+        
+        // Track animation intervals
+        let animationIntervals = {};
+
+        // State
+        let isDragging = false;
+        let isResizing = false;
+        let selectedZone = null;
+        let dragOffset = { x: 0, y: 0 };
+        let resizeHandle = null;
+
+        // DOM Elements
+        const mapContainer = document.getElementById('map-container');
+        const mapImage = document.getElementById('map-image');
+        const zoneSvg = document.getElementById('zone-svg');
+        const effectsGroup = document.getElementById('effects-group');
+        const effectList = document.getElementById('effect-list');
+        const mouseCoords = document.getElementById('mouse-coords');
+        const codeOutput = document.getElementById('code-output');
+        const resizeHandles = document.getElementById('resize-handles');
+
+        // Get mouse position as percentage of image
+        function getMousePercent(e) {
+            const rect = mapImage.getBoundingClientRect();
+            const x = ((e.clientX - rect.left) / rect.width) * 100;
+            const y = ((e.clientY - rect.top) / rect.height) * 100;
+            return {
+                x: Math.max(0, Math.min(100, x)),
+                y: Math.max(0, Math.min(100, y))
+            };
+        }
+
+        // ===== ENVIRONMENTAL EFFECTS FUNCTIONS =====
+        
+        // Select effect type
+        function selectEffectType(type) {
+            selectedEffectType = type;
+            
+            // Update button states
+            document.querySelectorAll('.effect-type-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-effect="${type}"]`).classList.add('active');
+            
+            // Change cursor
+            mapContainer.style.cursor = 'crosshair';
+        }
+
+        // Update effect size
+        function updateEffectSize(value) {
+            effectSize = parseFloat(value);
+            // Value is shown directly in the input field, no need for separate display
+        }
+
+        // Start PNG sequence animation
+        function startPNGSequenceAnimation(effectId, effectType) {
+            const seq = pngSequences[effectType];
+            let currentFrame = seq.startFrame;
+            const frameInterval = 1000 / seq.fps; // ms per frame
+            
+            // Clear any existing interval for this effect
+            if (animationIntervals[effectId]) {
+                clearInterval(animationIntervals[effectId]);
+            }
+            
+            // Start animation loop
+            animationIntervals[effectId] = setInterval(() => {
+                const element = document.getElementById(`effect-${effectId}`);
+                if (!element) {
+                    // Element removed, stop animation
+                    clearInterval(animationIntervals[effectId]);
+                    delete animationIntervals[effectId];
+                    return;
+                }
+                
+                const frameToLoad = currentFrame;
+                const paddedFrame = String(frameToLoad).padStart(3, '0');
+                const nextHref = `${seq.folder}/frame_${paddedFrame}.png`;
+
+                // Preload the frame before swapping href to avoid broken-image flicker
+                const preloader = new Image();
+                preloader.onload = () => {
+                    const liveEl = document.getElementById(`effect-${effectId}`);
+                    if (liveEl) {
+                        liveEl.setAttribute('href', nextHref);
+                    }
+                };
+                preloader.onerror = () => {
+                    // Keep the previous valid frame if this one is missing/can't load
+                };
+                preloader.src = nextHref;
+
+                currentFrame++;
+                if (currentFrame > seq.endFrame) currentFrame = seq.startFrame; // Loop back
+            }, frameInterval);
+        }
+
+        // Stop PNG sequence animation
+        function stopPNGSequenceAnimation(effectId) {
+            if (animationIntervals[effectId]) {
+                clearInterval(animationIntervals[effectId]);
+                delete animationIntervals[effectId];
+            }
+        }
+
+        // Add effect at position
+        function addEffect(x, y) {
+            if (!selectedEffectType) return;
+            
+            const effect = {
+                id: effectIdCounter++,
+                type: selectedEffectType,
+                x: x,
+                y: y,
+                size: effectSize
+            };
+            
+            effects.push(effect);
+            updateEffectsDisplay();
+            
+            // Deselect effect type after placing
+            selectedEffectType = null;
+            document.querySelectorAll('.effect-type-btn').forEach(btn => {
+                if (btn.dataset.effect === 'smoke' || btn.dataset.effect === 'fire') {
+                    btn.classList.remove('active');
+                }
+            });
+            mapContainer.style.cursor = 'crosshair';
+        }
+
+        // Toggle fog overlay
+        function toggleFog() {
+            fogActive = !fogActive;
+            const fogBtn = document.getElementById('fog-toggle');
+            if (fogActive) {
+                fogBtn.classList.add('active');
+            } else {
+                fogBtn.classList.remove('active');
+            }
+            updateEffectsDisplay();
+        }
+
+        // Toggle rain overlay
+        function toggleRain() {
+            rainActive = !rainActive;
+            const rainBtn = document.getElementById('rain-toggle');
+            if (rainActive) {
+                rainBtn.classList.add('active');
+            } else {
+                rainBtn.classList.remove('active');
+            }
+            updateEffectsDisplay();
+        }
+
+        // Remove effect by ID
+        function removeEffect(id) {
+            // Stop animation if it's a PNG sequence
+            stopPNGSequenceAnimation(id);
+            effects = effects.filter(e => e.id !== id);
+            updateEffectsDisplay();
+        }
+
+        // Clear all effects
+        function clearAllEffects() {
+            // Stop all PNG sequence animations
+            Object.keys(animationIntervals).forEach(id => {
+                stopPNGSequenceAnimation(parseInt(id));
+            });
+            
+            effects = [];
+            fogActive = false;
+            rainActive = false;
+            document.getElementById('fog-toggle').classList.remove('active');
+            document.getElementById('rain-toggle').classList.remove('active');
+            updateEffectsDisplay();
+        }
+
+        // Update effects display
+        function updateEffectsDisplay() {
+            // Clear existing effects
+            effectsGroup.innerHTML = '';
+            
+            // Add fog overlay (full map) if active - multiple drifting cloud layers
+            if (fogActive) {
+                const fogLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                fogLayer.setAttribute('class', 'fog-layer');
+                
+                // Create multiple large overlapping fog clouds that cover the entire map
+                const clouds = [
+                    // Bottom layer
+                    { cx: 25, cy: 25, rx: 55, ry: 45, class: 'fog-cloud-1', delay: 0 },
+                    { cx: 75, cy: 35, rx: 60, ry: 50, class: 'fog-cloud-2', delay: 4 },
+                    { cx: 50, cy: 60, rx: 65, ry: 48, class: 'fog-cloud-3', delay: 8 },
+                    // Middle layer
+                    { cx: 15, cy: 70, rx: 50, ry: 45, class: 'fog-cloud-1', delay: 2 },
+                    { cx: 85, cy: 75, rx: 55, ry: 50, class: 'fog-cloud-2', delay: 6 },
+                    { cx: 40, cy: 20, rx: 58, ry: 42, class: 'fog-cloud-3', delay: 10 },
+                    // Top layer
+                    { cx: 60, cy: 80, rx: 52, ry: 48, class: 'fog-cloud-1', delay: 3 },
+                    { cx: 30, cy: 45, rx: 62, ry: 52, class: 'fog-cloud-2', delay: 7 },
+                    { cx: 70, cy: 15, rx: 57, ry: 46, class: 'fog-cloud-3', delay: 11 }
+                ];
+                
+                clouds.forEach(cloud => {
+                    const ellipse = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+                    ellipse.setAttribute('class', cloud.class);
+                    ellipse.setAttribute('cx', cloud.cx);
+                    ellipse.setAttribute('cy', cloud.cy);
+                    ellipse.setAttribute('rx', cloud.rx);
+                    ellipse.setAttribute('ry', cloud.ry);
+                    ellipse.style.transformOrigin = `${cloud.cx}% ${cloud.cy}%`;
+                    ellipse.style.animationDelay = `${cloud.delay}s`;
+                    fogLayer.appendChild(ellipse);
+                });
+                
+                effectsGroup.appendChild(fogLayer);
+            }
+            
+            // Add rain overlay (full map) if active - heavy storm with depth
+            if (rainActive) {
+                const rainGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                rainGroup.setAttribute('class', 'effect-rain-overlay');
+                
+                // Create 400 rain drops with varying depths for realism
+                for (let i = 0; i < 400; i++) {
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    const x = Math.random() * 100;
+                    const y = Math.random() * 100;
+                    
+                    // Create depth with three rain layers
+                    const depth = Math.random();
+                    let length, className, width, windAngle;
+                    
+                    if (depth < 0.25) {
+                        // Light background rain (distant)
+                        length = 1.2 + Math.random() * 0.8;
+                        className = 'rain-line rain-light';
+                        width = 0.07;
+                        windAngle = 0.15;
+                    } else if (depth < 0.65) {
+                        // Medium rain (middle ground)
+                        length = 1.8 + Math.random() * 1.2;
+                        className = 'rain-line rain-medium';
+                        width = 0.11;
+                        windAngle = 0.2;
+                    } else {
+                        // Heavy foreground rain (close)
+                        length = 2.5 + Math.random() * 1.8;
+                        className = 'rain-line rain-heavy';
+                        width = 0.14;
+                        windAngle = 0.25;
+                    }
+                    
+                    const delay = Math.random() * 1.2;
+                    const wind = -2; // Consistent wind direction
+                    
+                    line.setAttribute('x1', x);
+                    line.setAttribute('y1', y);
+                    line.setAttribute('x2', x + wind * windAngle);
+                    line.setAttribute('y2', y + length);
+                    line.setAttribute('class', className);
+                    line.setAttribute('stroke-width', width);
+                    line.style.animationDelay = `${delay}s`;
+                    
+                    rainGroup.appendChild(line);
+                }
+                
+                effectsGroup.appendChild(rainGroup);
+            }
+            
+            // Add each point-based effect to SVG (smoke, fire)
+            effects.forEach(effect => {
+                let element;
+                
+                if (effect.type === 'smoke' || effect.type === 'fire') {
+                    // Use PNG sequence animation
+                    element = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+                    element.setAttribute('class', 'png-sequence');
+                    element.setAttribute('id', `effect-${effect.id}`);
+                    
+                    const seq = pngSequences[effect.type];
+                    const width = effect.size * 2;
+                    const height = effect.size * 2;
+                    
+                    // Set initial frame
+                    const paddedFrame = String(seq.startFrame).padStart(3, '0');
+                    element.setAttribute('href', `${seq.folder}/frame_${paddedFrame}.png`);
+                    
+                    element.setAttribute('x', effect.x - width / 2);
+                    element.setAttribute('y', effect.y - height / 2);
+                    element.setAttribute('width', width);
+                    element.setAttribute('height', height);
+                    
+                    // Start PNG sequence animation
+                    startPNGSequenceAnimation(effect.id, effect.type);
+                }
+                
+                // Add right-click to remove and drag functionality
+                if (element) {
+                    element.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        removeEffect(effect.id);
+                    });
+                    
+                    // Make draggable
+                    element.style.cursor = 'move';
+                    element.addEventListener('mousedown', (e) => {
+                        if (e.button === 0) { // Left click only
+                            e.preventDefault();
+                            e.stopPropagation();
+                            draggingEffect = effect;
+                            
+                            const pos = getMousePercent(e);
+                            effectDragOffset.x = pos.x - effect.x;
+                            effectDragOffset.y = pos.y - effect.y;
+                            
+                            element.style.opacity = '0.7';
+                        }
+                    });
+                    
+                    effectsGroup.appendChild(element);
+                }
+            });
+            
+            // Update effect list
+            let effectItems = [];
+            
+            if (fogActive) {
+                effectItems.push(`
+                    <div class="effect-item" style="background: rgba(200,200,200,0.1);">
+                        <span class="type">🌫️ FOG</span>
+                        <span class="coords" style="color: #888;">Full Coverage</span>
+                    </div>
+                `);
+            }
+            if (rainActive) {
+                effectItems.push(`
+                    <div class="effect-item" style="background: rgba(100,150,255,0.1);">
+                        <span class="type">🌧️ RAIN STORM</span>
+                        <span class="coords" style="color: #888;">Full Coverage</span>
+                    </div>
+                `);
+            }
+            
+            effects.forEach(effect => {
+                const icon = effect.type === 'smoke' ? '💨' : '🔥';
+                effectItems.push(`
+                    <div class="effect-item">
+                        <span class="type">${icon} ${effect.type.toUpperCase()}</span>
+                        <span class="coords">[${effect.x.toFixed(1)}, ${effect.y.toFixed(1)}]</span>
+                        <button class="delete" onclick="removeEffect(${effect.id})">×</button>
+                    </div>
+                `);
+            });
+            
+            if (effectItems.length === 0) {
+                effectList.innerHTML = '<p style="color: #666; text-align: center; font-style: italic;">No effects added</p>';
+            } else {
+                effectList.innerHTML = effectItems.join('');
+            }
+            
+            updateCodeOutput();
+        }
+
+        // Update zone display
+        function updateZoneDisplay() {
+            for (const [key, zone] of Object.entries(zones)) {
+                const zoneEl = document.getElementById(`zone-${key.toLowerCase()}`);
+                const labelEl = document.getElementById(`label-${key.toLowerCase()}`);
+                
+                zoneEl.setAttribute('cx', zone.cx);
+                zoneEl.setAttribute('cy', zone.cy);
+                zoneEl.setAttribute('rx', zone.rx);
+                zoneEl.setAttribute('ry', zone.ry);
+                
+                labelEl.setAttribute('x', zone.cx);
+                labelEl.setAttribute('y', zone.cy);
+                
+                // Update info display
+                document.getElementById(`zone-${key.toLowerCase()}-center`).textContent = 
+                    `${zone.cx.toFixed(1)}, ${zone.cy.toFixed(1)}`;
+                document.getElementById(`zone-${key.toLowerCase()}-size`).textContent = 
+                    `${zone.rx.toFixed(1)} x ${zone.ry.toFixed(1)}`;
+            }
+            
+            updateResizeHandles();
+            updateCodeOutput();
+        }
+
+        // Update resize handles position
+        function updateResizeHandles() {
+            if (!selectedZone) {
+                resizeHandles.style.display = 'none';
+                return;
+            }
+            
+            const zone = zones[selectedZone];
+            resizeHandles.style.display = 'block';
+            
+            document.getElementById('handle-top').setAttribute('cx', zone.cx);
+            document.getElementById('handle-top').setAttribute('cy', zone.cy - zone.ry);
+            
+            document.getElementById('handle-right').setAttribute('cx', zone.cx + zone.rx);
+            document.getElementById('handle-right').setAttribute('cy', zone.cy);
+            
+            document.getElementById('handle-bottom').setAttribute('cx', zone.cx);
+            document.getElementById('handle-bottom').setAttribute('cy', zone.cy + zone.ry);
+            
+            document.getElementById('handle-left').setAttribute('cx', zone.cx - zone.rx);
+            document.getElementById('handle-left').setAttribute('cy', zone.cy);
+        }
+
+        // Update code output
+        function updateCodeOutput() {
+            let code = `// Drone Zone Positions (percentages of map)
+const droneZones = {
+    A: { cx: ${zones.A.cx.toFixed(1)}, cy: ${zones.A.cy.toFixed(1)}, rx: ${zones.A.rx.toFixed(1)}, ry: ${zones.A.ry.toFixed(1)} },
+    B: { cx: ${zones.B.cx.toFixed(1)}, cy: ${zones.B.cy.toFixed(1)}, rx: ${zones.B.rx.toFixed(1)}, ry: ${zones.B.ry.toFixed(1)} },
+    C: { cx: ${zones.C.cx.toFixed(1)}, cy: ${zones.C.cy.toFixed(1)}, rx: ${zones.C.rx.toFixed(1)}, ry: ${zones.C.ry.toFixed(1)} }
+};`;
+            
+            // Add full-map weather effects
+            if (fogActive || rainActive) {
+                code += `\n\n// Weather Effects (Full Map)
+const weatherEffects = {
+    fog: ${fogActive},
+    rain: ${rainActive}
+};`;
+            }
+            
+            // Add point-based environmental effects if any
+            if (effects.length > 0) {
+                code += `\n\n// Environmental Effects (Point-based)
+const environmentalEffects = [
+${effects.map(e => `    { type: "${e.type}", x: ${e.x.toFixed(1)}, y: ${e.y.toFixed(1)}, size: ${e.size.toFixed(1)} }`).join(',\n')}
+];`;
+            }
+            
+            codeOutput.textContent = code;
+        }
+
+        // Reset zones to default
+        function resetZones() {
+            zones = JSON.parse(JSON.stringify(defaultZones));
+            selectedZone = null;
+            effects = [];
+            effectIdCounter = 0;
+            selectedEffectType = null;
+            effectSize = 15.0;
+            fogActive = false;
+            rainActive = false;
+            document.getElementById('effect-size-input').value = 15.0;
+            document.querySelectorAll('.effect-type-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            updateZoneDisplay();
+            updateEffectsDisplay();
+        }
+
+        // Copy code to clipboard
+        function copyCode() {
+            navigator.clipboard.writeText(codeOutput.textContent).then(() => {
+                const notice = document.getElementById('copy-notice');
+                notice.classList.add('show');
+                setTimeout(() => notice.classList.remove('show'), 2000);
+            });
+        }
+
+        // Zone mouse events
+        ['a', 'b', 'c'].forEach(z => {
+            const zoneEl = document.getElementById(`zone-${z}`);
+            
+            zoneEl.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                selectedZone = z.toUpperCase();
+                isDragging = true;
+                
+                const pos = getMousePercent(e);
+                const zone = zones[selectedZone];
+                dragOffset.x = pos.x - zone.cx;
+                dragOffset.y = pos.y - zone.cy;
+                
+                zoneEl.classList.add('dragging');
+                updateResizeHandles();
+            });
+        });
+
+        // Resize handle events
+        ['top', 'right', 'bottom', 'left'].forEach(handle => {
+            const handleEl = document.getElementById(`handle-${handle}`);
+            
+            handleEl.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                isResizing = true;
+                resizeHandle = handle;
+            });
+        });
+
+        // Mouse move
+        mapContainer.addEventListener('mousemove', (e) => {
+            const pos = getMousePercent(e);
+            mouseCoords.textContent = `${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}`;
+            
+            if (draggingEffect) {
+                // Update effect position
+                draggingEffect.x = Math.max(0, Math.min(100, pos.x - effectDragOffset.x));
+                draggingEffect.y = Math.max(0, Math.min(100, pos.y - effectDragOffset.y));
+                updateEffectsDisplay();
+                return;
+            }
+            
+            if (isDragging && selectedZone) {
+                const zone = zones[selectedZone];
+                zone.cx = Math.max(zone.rx, Math.min(100 - zone.rx, pos.x - dragOffset.x));
+                zone.cy = Math.max(zone.ry, Math.min(100 - zone.ry, pos.y - dragOffset.y));
+                updateZoneDisplay();
+            }
+            
+            if (isResizing && selectedZone) {
+                const zone = zones[selectedZone];
+                
+                switch (resizeHandle) {
+                    case 'top':
+                        zone.ry = Math.max(2, zone.cy - pos.y);
+                        break;
+                    case 'bottom':
+                        zone.ry = Math.max(2, pos.y - zone.cy);
+                        break;
+                    case 'left':
+                        zone.rx = Math.max(2, zone.cx - pos.x);
+                        break;
+                    case 'right':
+                        zone.rx = Math.max(2, pos.x - zone.cx);
+                        break;
+                }
+                
+                updateZoneDisplay();
+            }
+        });
+
+        // Mouse up
+        document.addEventListener('mouseup', () => {
+            if (draggingEffect) {
+                // Reset opacity after drag
+                updateEffectsDisplay();
+                draggingEffect = null;
+            }
+            if (isDragging) {
+                document.querySelectorAll('.zone').forEach(z => z.classList.remove('dragging'));
+            }
+            isDragging = false;
+            isResizing = false;
+            resizeHandle = null;
+        });
+
+        // Click on map to deselect
+        mapContainer.addEventListener('click', (e) => {
+            // If effect type is selected (smoke or fire only), place effect
+            if (selectedEffectType && (selectedEffectType === 'smoke' || selectedEffectType === 'fire') && 
+                (e.target === mapImage || e.target === zoneSvg || e.target.id === 'effects-group')) {
+                const pos = getMousePercent(e);
+                addEffect(pos.x, pos.y);
+                return;
+            }
+            
+            // Otherwise, deselect zone
+            if (e.target === mapImage || e.target === zoneSvg) {
+                selectedZone = null;
+                updateResizeHandles();
+            }
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'r' || e.key === 'R') {
+                resetZones();
+            }
+            if (e.key === 'c' || e.key === 'C') {
+                if (!e.ctrlKey) {
+                    copyCode();
+                }
+            }
+            if (e.ctrlKey && e.key === 'c') {
+                copyCode();
+            }
+        });
+
+        // Initialize
+        updateZoneDisplay();
+        updateEffectsDisplay();
+    </script>
+</body>
+</html>

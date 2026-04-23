@@ -1,0 +1,18 @@
+node_modules/
+dist/
+*.log
+
+# Build output (renderer)
+dist-renderer/
+
+# Large media assets
+VID/
+MP3/
+footagecrate-*/
+FootageCrate-*/
+
+# Large binary assets (keep if you want, but default ignore)
+*.mp4
+*.mp3
+*.gif
+*.png
