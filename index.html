@@ -2700,6 +2700,8 @@
         "q1_angle": true,
         "q2_suspects": true,
         "q5_building": [true, true, true],
+        "q5_weaponSeen": [false, false, true],
+        "q5_weaponType": [false, false, true],
         "q5_weapon": [false, false, true],
         "q7_canDetain": false
       },
@@ -2708,7 +2710,7 @@
         "q2_suspects": 3,
         "q5_suspects": [
           { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
-          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": "Y", "weaponTypeLastSeen": null },
           { "building": null, "buildingAnyOf": [], "weaponSeen": "Y", "weaponTypeLastSeen": "rifle" }
         ],
         "q3_weaponSeen": null,
@@ -2726,7 +2728,9 @@
         "q1_angle": true,
         "q2_suspects": true,
         "q5_building": [true, true, true],
-        "q5_weapon": [true, false, true],
+        "q5_weaponSeen": [false, true, true],
+        "q5_weaponType": [false, false, true],
+        "q5_weapon": [false, true, true],
         "q7_canDetain": true
       },
       "answers": {
@@ -3675,11 +3679,29 @@ C. No, suspect has a weapon, recommend maintaining minimum safe distance.`;
 
         let narrationQueue = [];
         let narrationActiveSection = null;
+        let narrationStopTimer = null;
+        let narrationTimeUpdateHandler = null;
+        let narrationCurrentClipKey = null;
+
+        // Optional max play durations (seconds) for specific clips.
+        // If present, the clip is stopped after this many seconds.
+        const NARRATION_CLIP_MAX_SECONDS = {
+            'MP3/3-Be on the.mp3': 6.9
+        };
 
         function stopNarration() {
             narrationQueue = [];
             narrationActiveSection = null;
             if (!narrationAudio) return;
+            if (narrationStopTimer) {
+                clearTimeout(narrationStopTimer);
+                narrationStopTimer = null;
+            }
+            if (narrationTimeUpdateHandler) {
+                narrationAudio.removeEventListener('timeupdate', narrationTimeUpdateHandler);
+                narrationTimeUpdateHandler = null;
+            }
+            narrationCurrentClipKey = null;
             narrationAudio.pause();
             narrationAudio.currentTime = 0;
             narrationAudio.onended = null;
@@ -3689,10 +3711,35 @@ C. No, suspect has a weapon, recommend maintaining minimum safe distance.`;
             if (!narrationAudio) return;
             const next = narrationQueue.shift();
             if (!next) return;
+            if (narrationStopTimer) {
+                clearTimeout(narrationStopTimer);
+                narrationStopTimer = null;
+            }
+            if (narrationTimeUpdateHandler) {
+                narrationAudio.removeEventListener('timeupdate', narrationTimeUpdateHandler);
+                narrationTimeUpdateHandler = null;
+            }
+            narrationCurrentClipKey = next;
             narrationAudio.src = next;
             narrationAudio.play().catch(() => {
                 // Autoplay can be blocked in some contexts; student started with SPACE so this should generally succeed.
             });
+
+            const maxSeconds = NARRATION_CLIP_MAX_SECONDS[next];
+            if (Number.isFinite(maxSeconds) && maxSeconds > 0) {
+                const token = narrationActiveSection;
+                narrationTimeUpdateHandler = () => {
+                    if (narrationActiveSection !== token) return;
+                    if (narrationCurrentClipKey !== next) return;
+                    if (narrationAudio.currentTime >= maxSeconds) {
+                        narrationAudio.pause();
+                        narrationAudio.currentTime = 0;
+                        // Manually advance since pause won't fire ended
+                        playNextNarrationClip();
+                    }
+                };
+                narrationAudio.addEventListener('timeupdate', narrationTimeUpdateHandler);
+            }
         }
 
         function playNarrationForSection(sectionNumber) {
