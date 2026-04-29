@@ -1063,6 +1063,8 @@
                 });
 
                 const wt = document.createElement('select');
+                const seen = state.suspects[i].weaponSeen || '';
+                const allowNone = (seen !== 'Y'); // if weapon seen, "No weapon" should not be selectable
                 wt.innerHTML = `
                     <option value="">Weapon type (last seen)</option>
                     <option value="pistol">Pistol</option>
@@ -1070,10 +1072,11 @@
                     <option value="knife">Knife</option>
                     <option value="other">Other</option>
                     <option value="multiple">Multiple weapons</option>
-                    <option value="none">No weapon</option>
+                    ${allowNone ? '<option value="none">No weapon</option>' : ''}
                 `;
                 wt.value = state.suspects[i].weaponType || '';
-                wt.disabled = (state.suspects[i].weaponSeen === 'N');
+                if (seen === 'Y' && wt.value === 'none') wt.value = '';
+                wt.disabled = (seen === 'N');
                 wt.addEventListener('change', () => {
                     state.suspects[i].weaponType = wt.value;
                     syncUIFromState();

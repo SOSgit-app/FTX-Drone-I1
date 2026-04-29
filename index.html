@@ -622,6 +622,15 @@
             display: block;
         }
 
+        .video-tip {
+            padding: 8px 14px;
+            border: 1px solid rgba(255, 170, 0, 0.55);
+            color: rgba(255, 170, 0, 0.95);
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+            background: rgba(0, 0, 0, 0.55);
+        }
+
         /* Magnifier overlay (hover zoom) */
         .video-magnifier {
             position: absolute;
@@ -691,6 +700,25 @@
 
         #zone-video-modal.active {
             display: flex;
+        }
+
+        /* Fullscreen layout for zone (position) video feed */
+        #zone-video-modal.active .video-container {
+            width: 100vw;
+            height: 100vh;
+            max-width: none;
+            max-height: none;
+            border-width: 2px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #zone-video-modal.active .video-feed {
+            max-height: none;
+            flex: 1 1 auto;
+            min-height: 0;
+            object-fit: contain;
+            background: #000;
         }
 
         /* Test processing overlay (terminal-style) */
@@ -1235,6 +1263,92 @@
             box-shadow: 0 0 30px rgba(0, 255, 0, 0.2);
         }
 
+        /* Pop-out info panel for A/B/C details (shown on map; avoids scroll UX) */
+        .position-popout {
+            position: absolute;
+            right: 14px;
+            bottom: 14px;
+            width: min(420px, 46vw);
+            max-height: min(52vh, 520px);
+            overflow: auto;
+            display: none;
+            background: rgba(0, 0, 0, 0.78);
+            border: 1px solid rgba(0, 255, 0, 0.85);
+            border-radius: 8px;
+            padding: 14px 14px 12px;
+            z-index: 30;
+            box-shadow: 0 0 18px rgba(0, 255, 0, 0.18);
+        }
+
+        .position-popout.active {
+            display: block;
+            animation: fadeIn 0.18s ease-in;
+        }
+
+        .position-popout .popout-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .position-popout .popout-close {
+            background: transparent;
+            color: rgba(0, 255, 0, 0.9);
+            border: 1px solid rgba(0, 255, 0, 0.55);
+            border-radius: 6px;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+        }
+
+        .position-popout .popout-close:hover {
+            background: rgba(0, 255, 0, 0.12);
+            border-color: rgba(0, 255, 0, 0.95);
+        }
+
+        .position-popout .position-title {
+            display: block;
+            color: #ffaa00;
+            font-size: 1rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .position-popout .position-description {
+            display: block;
+            color: #00ff00;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .position-popout .position-stat {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.14);
+        }
+
+        .position-popout .stat-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            font-size: 0.88rem;
+        }
+
+        .position-popout .stat-label { color: #888; }
+        .position-popout .stat-value { color: #ffaa00; font-weight: bold; }
+        .position-popout .stat-value.high { color: #ff4444; }
+        .position-popout .stat-value.medium { color: #ffaa00; }
+        .position-popout .stat-value.low { color: #00ff00; }
+
         .angle-map-container img {
             max-width: 60vw;
             max-height: 70vh;
@@ -1356,6 +1470,24 @@
             gap: 15px;
         }
 
+        /* Prevent A/B/C buttons from being pushed off-screen on shorter displays */
+        @media (max-height: 780px) {
+            .console-prompt-text {
+                font-size: 1.0rem;
+                line-height: 1.7;
+                margin-bottom: 18px;
+            }
+
+            .angle-options {
+                gap: 10px;
+            }
+
+            .angle-option {
+                padding: 12px 16px;
+                font-size: 0.95rem;
+            }
+        }
+
         .angle-option {
             background: #1a3a1a;
             border: 2px solid #00ff00;
@@ -1410,6 +1542,21 @@
 
         .angle-input-prompt span {
             color: #00ff00;
+        }
+
+        .angle-input-confirm {
+            margin-top: 10px;
+            padding: 10px 12px;
+            border: 1px solid rgba(255, 170, 0, 0.65);
+            background: rgba(0, 0, 0, 0.45);
+            color: rgba(255, 170, 0, 0.95);
+            font-size: 0.85rem;
+            line-height: 1.45;
+            display: none;
+        }
+
+        .angle-input-confirm.active {
+            display: block;
         }
 
         #angle-input {
@@ -1830,13 +1977,16 @@
         <ellipse class="drone-zone zone-a" id="map-zone-a" cx="86.1" cy="20.1" rx="5.3" ry="6.0"/>
         <text class="zone-label-text" x="86.1" y="20.1">A</text>
                     </svg>
+
+                    <!-- Pop-out panel (shows details without scrolling) -->
+                    <div class="position-popout" id="position-popout" aria-live="polite"></div>
                 </div>
             </div>
             <div class="angle-console-section">
                 <div class="console-prompt-header">▶ DRONE CONTROL INTERFACE</div>
                 <div class="angle-console-body">
                     <div class="console-prompt-text" id="angle-prompt-text"></div>
-                    <div style="margin: 10px 0 14px; color: #888; font-size: 0.9rem;">
+                    <div style="margin: 10px 0 14px; color: #ffaa00; font-size: 0.9rem;">
                         Click the buttons below for more information.
                     </div>
                     <div class="angle-options" id="angle-options">
@@ -1850,14 +2000,15 @@
                             <span class="option-number">[C]</span> DRONE POSITION C
                         </button>
                     </div>
-                    <div class="position-details" id="position-details"></div>
+                    <div class="position-details" id="position-details" style="display:none;"></div>
                 </div>
                 <div class="angle-input-section">
-                    <div class="angle-input-label">Or enter selection manually:</div>
+                    <div class="angle-input-label">Type your selection below and press Enter to submit:</div>
                     <div class="angle-input-prompt">
                         <span>SELECT POSITION &gt;</span>
                         <input type="text" id="angle-input" maxlength="1" autocomplete="off">
                     </div>
+                    <div class="angle-input-confirm" id="angle-input-confirm"></div>
                 </div>
             </div>
         </div>
@@ -1878,6 +2029,9 @@
                         <span>CONNECTED</span>
                     </div>
                 </div>
+            </div>
+            <div class="video-tip" id="zone-video-tip">
+                TIP: Hover your cursor over the video feed to use the magnifying glass.
             </div>
             <video id="zone-drone-video" class="video-feed" playsinline>
                 <!-- Default VA/A; overwritten when opening the zone modal for the chosen position -->
@@ -2130,7 +2284,7 @@
       "required": {
         "q1_angle": true,
         "q2_suspects": false,
-        "q5_building": [false, false],
+        "q5_building": [true, false],
         "q5_weaponSeen": [false, false],
         "q5_weaponType": [false, false],
         "q5_weapon": [false, false],
@@ -2278,7 +2432,9 @@
       "required": {
         "q1_angle": true,
         "q2_suspects": false,
-        "q5_building": [false, true, false],
+        "q5_building": [false, true, true],
+        "q5_weaponSeen": [false, false, false],
+        "q5_weaponType": [false, false, false],
         "q5_weapon": [false, false, false],
         "q7_canDetain": false
       },
@@ -2286,14 +2442,14 @@
         "q1_angle": "A",
         "q2_suspects": 3,
         "q5_suspects": [
-          { "building": null, "weaponSeen": null, "weaponTypeLastSeen": null },
-          { "building": "L", "weaponSeen": null, "weaponTypeLastSeen": null },
-          { "building": null, "weaponSeen": null, "weaponTypeLastSeen": null }
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null }
         ],
         "q3_weaponSeen": null,
         "q4_weaponType": null,
         "q5_building": null,
-        "q6_nextBuilding": "L",
+        "q6_nextBuilding": null,
         "q7_canDetain": ["C"]
       }
     },
@@ -2304,7 +2460,9 @@
       "required": {
         "q1_angle": true,
         "q2_suspects": true,
-        "q5_building": [true, true, false],
+        "q5_building": [true, false, true],
+        "q5_weaponSeen": [false, false, false],
+        "q5_weaponType": [false, false, false],
         "q5_weapon": [false, false, false],
         "q7_canDetain": false
       },
@@ -2312,14 +2470,14 @@
         "q1_angle": "A",
         "q2_suspects": 3,
         "q5_suspects": [
-          { "building": "R", "weaponSeen": null, "weaponTypeLastSeen": null },
-          { "building": "L", "weaponSeen": null, "weaponTypeLastSeen": null },
-          { "building": "G", "weaponSeen": null, "weaponTypeLastSeen": null }
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null }
         ],
         "q3_weaponSeen": null,
         "q4_weaponType": null,
-        "q5_building": "R",
-        "q6_nextBuilding": "L",
+        "q5_building": null,
+        "q6_nextBuilding": null,
         "q7_canDetain": ["C"]
       }
     }
@@ -2362,7 +2520,9 @@
       "required": {
         "q1_angle": true,
         "q2_suspects": true,
-        "q5_building": [true, false, true],
+        "q5_building": [true, true, true],
+        "q5_weaponSeen": [false, false, false],
+        "q5_weaponType": [false, false, false],
         "q5_weapon": [false, false, false],
         "q7_canDetain": false
       },
@@ -2370,14 +2530,14 @@
         "q1_angle": "B",
         "q2_suspects": 3,
         "q5_suspects": [
-          { "building": "N", "weaponSeen": null, "weaponTypeLastSeen": null },
-          { "building": "L", "weaponSeen": null, "weaponTypeLastSeen": null },
-          { "building": "G", "weaponSeen": null, "weaponTypeLastSeen": null }
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null }
         ],
         "q3_weaponSeen": null,
         "q4_weaponType": null,
-        "q5_building": "N",
-        "q6_nextBuilding": "L",
+        "q5_building": null,
+        "q6_nextBuilding": null,
         "q7_canDetain": ["C"]
       }
     },
@@ -2389,6 +2549,8 @@
         "q1_angle": true,
         "q2_suspects": true,
         "q5_building": [true, true, true],
+        "q5_weaponSeen": [false, false, false],
+        "q5_weaponType": [false, false, false],
         "q5_weapon": [false, false, false],
         "q7_canDetain": false
       },
@@ -2396,14 +2558,14 @@
         "q1_angle": "B",
         "q2_suspects": 3,
         "q5_suspects": [
-          { "building": "N", "weaponSeen": null, "weaponTypeLastSeen": null },
-          { "building": "K", "weaponSeen": null, "weaponTypeLastSeen": null },
-          { "building": "G", "weaponSeen": null, "weaponTypeLastSeen": null }
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null }
         ],
         "q3_weaponSeen": null,
         "q4_weaponType": null,
-        "q5_building": "N",
-        "q6_nextBuilding": "K",
+        "q5_building": null,
+        "q6_nextBuilding": null,
         "q7_canDetain": ["C"]
       }
     }
@@ -2447,6 +2609,8 @@
         "q1_angle": true,
         "q2_suspects": false,
         "q5_building": [true, true, false],
+        "q5_weaponSeen": [false, false, false],
+        "q5_weaponType": [false, false, false],
         "q5_weapon": [false, false, false],
         "q7_canDetain": false
       },
@@ -2462,7 +2626,7 @@
         "q4_weaponType": null,
         "q5_building": null,
         "q6_nextBuilding": null,
-        "q7_canDetain": ["C"]
+        "q7_canDetain": []
       }
     },
     "2": {
@@ -2473,6 +2637,8 @@
         "q1_angle": true,
         "q2_suspects": true,
         "q5_building": [true, true, true],
+        "q5_weaponSeen": [false, false, false],
+        "q5_weaponType": [false, false, false],
         "q5_weapon": [false, false, false],
         "q7_canDetain": false
       },
@@ -2530,8 +2696,10 @@
       "angle": "A",
       "required": {
         "q1_angle": true,
-        "q2_suspects": false,
-        "q5_building": [true, false, true],
+        "q2_suspects": true,
+        "q5_building": [true, true, true],
+        "q5_weaponSeen": [false, false, false],
+        "q5_weaponType": [false, false, false],
         "q5_weapon": [false, false, false],
         "q7_canDetain": false
       },
@@ -2557,8 +2725,10 @@
       "required": {
         "q1_angle": true,
         "q2_suspects": true,
-        "q5_building": [true, false, true],
-        "q5_weapon": [false, true, false],
+        "q5_building": [true, true, true],
+        "q5_weaponSeen": [false, false, false],
+        "q5_weaponType": [false, false, false],
+        "q5_weapon": [false, false, false],
         "q7_canDetain": false
       },
       "answers": {
@@ -2616,7 +2786,9 @@
         "q1_angle": true,
         "q2_suspects": true,
         "q5_building": [true, true, true],
-        "q5_weapon": [false, false, false],
+        "q5_weaponSeen": [false, true, false],
+        "q5_weaponType": [false, true, false],
+        "q5_weapon": [false, true, false],
         "q7_canDetain": false
       },
       "answers": {
@@ -2624,7 +2796,7 @@
         "q2_suspects": 3,
         "q5_suspects": [
           { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
-          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": "Y", "weaponTypeLastSeen": "rifle" },
           { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null }
         ],
         "q3_weaponSeen": null,
@@ -2641,20 +2813,22 @@
       "required": {
         "q1_angle": true,
         "q2_suspects": true,
-        "q5_building": [true, false, true],
-        "q5_weapon": [false, false, false],
+        "q5_building": [true, true, true],
+        "q5_weaponSeen": [true, false, true],
+        "q5_weaponType": [true, false, false],
+        "q5_weapon": [true, false, true],
         "q7_canDetain": false
       },
       "answers": {
         "q1_angle": "B",
         "q2_suspects": 3,
         "q5_suspects": [
+          { "building": null, "buildingAnyOf": [], "weaponSeen": "Y", "weaponTypeLastSeen": "rifle" },
           { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
-          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
-          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null }
+          { "building": null, "buildingAnyOf": [], "weaponSeen": "Y", "weaponTypeLastSeen": "rifle" }
         ],
-        "q3_weaponSeen": null,
-        "q4_weaponType": null,
+        "q3_weaponSeen": "Y",
+        "q4_weaponType": "rifle",
         "q5_building": null,
         "q6_nextBuilding": null,
         "q7_canDetain": ["C"]
@@ -2700,21 +2874,21 @@
         "q1_angle": true,
         "q2_suspects": true,
         "q5_building": [true, true, true],
-        "q5_weaponSeen": [false, false, true],
-        "q5_weaponType": [false, false, true],
-        "q5_weapon": [false, false, true],
+        "q5_weaponSeen": [false, true, true],
+        "q5_weaponType": [false, true, true],
+        "q5_weapon": [false, true, true],
         "q7_canDetain": false
       },
       "answers": {
         "q1_angle": "C",
         "q2_suspects": 3,
         "q5_suspects": [
-          { "building": null, "buildingAnyOf": [], "weaponSeen": null, "weaponTypeLastSeen": null },
-          { "building": null, "buildingAnyOf": [], "weaponSeen": "Y", "weaponTypeLastSeen": null },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": "N", "weaponTypeLastSeen": "none" },
+          { "building": null, "buildingAnyOf": [], "weaponSeen": "Y", "weaponTypeLastSeen": "rifle" },
           { "building": null, "buildingAnyOf": [], "weaponSeen": "Y", "weaponTypeLastSeen": "rifle" }
         ],
-        "q3_weaponSeen": null,
-        "q4_weaponType": null,
+        "q3_weaponSeen": "N",
+        "q4_weaponType": "none",
         "q5_building": null,
         "q6_nextBuilding": null,
         "q7_canDetain": ["C"]
@@ -2788,7 +2962,8 @@
             positionLocked: false,  // Whether drone position selection is locked
             skipRequested: false,  // Secret admin fast-forward
             zoneVideoPromptShown: false,  // Track if continue prompt has been shown
-            testPart: 1 // 1 | 2 (Part 2 is entered only if user continues drone usage)
+            testPart: 1, // 1 | 2 (Part 2 is entered only if user continues drone usage)
+            pendingPositionConfirm: null // { angle: 'A'|'B'|'C', armed: boolean }
         };
 
         // Intel Content
@@ -2944,6 +3119,7 @@ Your team has been selected for this mission. Stand by for further instructions.
         };
 
         let studentTestStepIdx = 0;
+        let studentTestNavDir = 1; // 1 = forward, -1 = back
         let studentTestHistoryEl = null;
         let studentTestPromptEl = null;
 
@@ -2965,16 +3141,19 @@ Your team has been selected for this mission. Stand by for further instructions.
             el.scrollTop = el.scrollHeight;
         }
 
-        function keyWeaponTypeOptions() {
-            return [
+        function keyWeaponTypeOptions(weaponSeen) {
+            const seen = String(weaponSeen || '');
+            const allowNone = (seen !== 'Y'); // if a weapon was seen, "No weapon" shouldn't be selectable
+            const opts = [
                 { v: '', t: '— select —' },
                 { v: 'pistol', t: 'Pistol' },
                 { v: 'rifle', t: 'Rifle' },
                 { v: 'knife', t: 'Knife' },
                 { v: 'other', t: 'Other' },
-                { v: 'multiple', t: 'Multiple weapons' },
-                { v: 'none', t: 'No weapon' }
+                { v: 'multiple', t: 'Multiple weapons' }
             ];
+            if (allowNone) opts.push({ v: 'none', t: 'No weapon' });
+            return opts;
         }
 
         // If VB/VC scoring keys aren't available yet, still render building markers using the VA key's buildings.
@@ -3105,7 +3284,27 @@ Your team has been selected for this mission. Stand by for further instructions.
         }
 
         function studentTestAdvance() {
+            studentTestNavDir = 1;
             studentTestStepIdx += 1;
+            renderStudentTestStep();
+        }
+
+        function studentTestBack() {
+            studentTestNavDir = -1;
+            const list = buildStudentTestStepList();
+            studentTestStepIdx = Math.max(0, studentTestStepIdx - 1);
+            // Skip over auto-steps in reverse so BACK actually goes to the previous real prompt.
+            while (studentTestStepIdx > 0) {
+                const step = list[studentTestStepIdx];
+                if (step && step.type === 'weaponType') {
+                    const s = STUDENT_TEST.suspects[step.suspectIndex];
+                    if (s && s.weaponSeen === 'N') {
+                        studentTestStepIdx = Math.max(0, studentTestStepIdx - 1);
+                        continue;
+                    }
+                }
+                break;
+            }
             renderStudentTestStep();
         }
 
@@ -3154,15 +3353,21 @@ Your team has been selected for this mission. Stand by for further instructions.
             promptEl.innerHTML = '';
 
             const list = buildStudentTestStepList();
-            let step = list[studentTestStepIdx];
+            // If we advance past the final step (confirm), treat it as "submitted" and score.
+            // (Do NOT clamp back to the last step, or TRANSMIT would loop.)
+            let step = (studentTestStepIdx >= list.length) ? null : list[studentTestStepIdx];
 
-            while (step && step.type === 'weaponType') {
+            // Auto-skip WEAPON TYPE when weapon was NOT seen — but only when moving forward.
+            while (step && step.type === 'weaponType' && studentTestNavDir >= 0) {
                 const s = STUDENT_TEST.suspects[step.suspectIndex];
                 if (s && s.weaponSeen === 'N') {
+                    const was = s.weaponTypeLastSeen;
                     s.weaponTypeLastSeen = 'none';
-                    appendStudentTestLog(`<span class="dim">[AUTO]</span> Suspect ${step.suspectIndex + 1} weapon type → <span class="ok">none</span> (weapon not seen)`);
+                    if (was !== 'none') {
+                        appendStudentTestLog(`<span class="dim">[AUTO]</span> Suspect ${step.suspectIndex + 1} weapon type → <span class="ok">none</span> (weapon not seen)`);
+                    }
                     studentTestStepIdx += 1;
-                    step = list[studentTestStepIdx];
+                    step = (studentTestStepIdx >= list.length) ? null : list[studentTestStepIdx];
                 } else {
                     break;
                 }
@@ -3186,6 +3391,14 @@ Your team has been selected for this mission. Stand by for further instructions.
 
             const actions = document.createElement('div');
             actions.className = 'prompt-actions';
+
+            const backBtn = document.createElement('button');
+            backBtn.type = 'button';
+            backBtn.className = 'test-btn secondary';
+            backBtn.textContent = '← BACK';
+            backBtn.addEventListener('click', () => {
+                studentTestBack();
+            });
 
             const angle = String(state.selectedAngle || '').toUpperCase() || '—';
             let mapExtra = null;
@@ -3215,6 +3428,7 @@ POST-RECON ASSESSMENT MODULE<br>
                     appendStudentTestLog(`<span class="dim">Q1</span> Angle <span class="ok">${angle}</span>`);
                     studentTestAdvance();
                 });
+                actions.appendChild(backBtn);
                 actions.appendChild(btn);
             } else if (step.type === 'q2') {
                 title.textContent = 'Q2 — SUSPECT COUNT';
@@ -3245,6 +3459,7 @@ POST-RECON ASSESSMENT MODULE<br>
                     studentTestAdvance();
                 });
                 actions.appendChild(sel);
+                actions.appendChild(backBtn);
                 actions.appendChild(btn);
             } else if (step.type === 'building') {
                 const i = step.suspectIndex;
@@ -3266,6 +3481,7 @@ POST-RECON ASSESSMENT MODULE<br>
                     studentTestAdvance();
                 });
                 actions.appendChild(sel);
+                actions.appendChild(backBtn);
                 actions.appendChild(btn);
             } else if (step.type === 'weaponSeen') {
                 const i = step.suspectIndex;
@@ -3290,14 +3506,18 @@ POST-RECON ASSESSMENT MODULE<br>
                     studentTestAdvance();
                 });
                 actions.appendChild(sel);
+                actions.appendChild(backBtn);
                 actions.appendChild(btn);
             } else if (step.type === 'weaponType') {
                 const i = step.suspectIndex;
                 title.textContent = `Q5 — SUSPECT ${i + 1} / WEAPON TYPE (LAST SEEN)`;
                 body.textContent = 'Weapon type (last seen):';
                 const sel = document.createElement('select');
-                sel.innerHTML = keyWeaponTypeOptions().map(o => `<option value="${o.v}">${o.t}</option>`).join('');
+                sel.innerHTML = keyWeaponTypeOptions(STUDENT_TEST.suspects[i]?.weaponSeen).map(o => `<option value="${o.v}">${o.t}</option>`).join('');
                 sel.value = STUDENT_TEST.suspects[i].weaponTypeLastSeen || '';
+                if (STUDENT_TEST.suspects[i]?.weaponSeen === 'Y' && sel.value === 'none') {
+                    sel.value = '';
+                }
                 const btn = document.createElement('button');
                 btn.type = 'button';
                 btn.className = 'test-btn';
@@ -3309,6 +3529,7 @@ POST-RECON ASSESSMENT MODULE<br>
                     studentTestAdvance();
                 });
                 actions.appendChild(sel);
+                actions.appendChild(backBtn);
                 actions.appendChild(btn);
             } else if (step.type === 'q7') {
                 title.textContent = 'Q7 — CAN THE SUSPECT(S) BE DETAINED?';
@@ -3338,18 +3559,18 @@ C. No, suspect has a weapon, recommend maintaining minimum safe distance.`;
                 });
 
                 actions.appendChild(sel);
+                actions.appendChild(backBtn);
                 actions.appendChild(btn);
             } else if (step.type === 'confirm') {
                 title.textContent = '[READY TO TRANSMIT]';
                 body.innerHTML = `<span class="dim">Review log above. When ready, transmit answers for scoring.</span><br><br>
 <span class="dim">Q7 selected:</span> <span class="ok">${STUDENT_TEST.q7Choice || '—'}</span>`;
-                const restart = document.createElement('button');
-                restart.type = 'button';
-                restart.className = 'test-btn secondary';
-                restart.textContent = 'RESTART TEST';
-                restart.addEventListener('click', () => {
-                    resetStudentTestWizard();
-                    appendStudentTestLog(`<span class="dim">> SESSION RESET</span>`);
+                const edit = document.createElement('button');
+                edit.type = 'button';
+                edit.className = 'test-btn secondary';
+                edit.textContent = 'EDIT ANSWERS';
+                edit.addEventListener('click', () => {
+                    studentTestStepIdx = 1; // Q1
                     renderStudentTestStep();
                 });
                 const sub = document.createElement('button');
@@ -3360,7 +3581,8 @@ C. No, suspect has a weapon, recommend maintaining minimum safe distance.`;
                     appendStudentTestLog(`<span class="dim">> TRANSMIT</span>`);
                     studentTestAdvance();
                 });
-                actions.appendChild(restart);
+                actions.appendChild(backBtn);
+                actions.appendChild(edit);
                 actions.appendChild(sub);
             }
 
@@ -3570,7 +3792,7 @@ C. No, suspect has a weapon, recommend maintaining minimum safe distance.`;
 
             if (passed) {
                 appendTerminalLine('<div style="margin-top:14px; font-size:1.3rem;"><span class="ok">RESULT: PASS</span></div>');
-                appendTerminalLine('<span class="dim">Status:</span> <span class="ok">CERTIFIED</span>');
+                appendTerminalLine('<span class="dim">Status:</span> <span class="ok">MISSION SUCCESS</span>');
             } else {
                 appendTerminalLine('<div style="margin-top:14px; font-size:1.3rem;"><span class="fail">RESULT: FAIL</span></div>');
                 appendTerminalLine('<span class="dim">Status:</span> <span class="fail">RETASKING REQUIRED</span>');
@@ -3683,10 +3905,22 @@ C. No, suspect has a weapon, recommend maintaining minimum safe distance.`;
         let narrationTimeUpdateHandler = null;
         let narrationCurrentClipKey = null;
 
-        // Optional max play durations (seconds) for specific clips.
+        function narrationClipId(pathOrUrl) {
+            // In dist/Electron, audio.src becomes a full file:// URL and spaces may be encoded.
+            // We normalize to just the decoded filename (e.g. "2-Flight path.mp3").
+            try {
+                const raw = String(pathOrUrl || '');
+                const last = raw.split('/').pop() || raw;
+                return decodeURIComponent(last);
+            } catch (_) {
+                return String(pathOrUrl || '').split('/').pop() || String(pathOrUrl || '');
+            }
+        }
+
+        // Optional max play durations (seconds) for specific clips (keyed by filename).
         // If present, the clip is stopped after this many seconds.
         const NARRATION_CLIP_MAX_SECONDS = {
-            'MP3/3-Be on the.mp3': 6.9
+            '2-Flight path.mp3': 7.4
         };
 
         function stopNarration() {
@@ -3725,7 +3959,8 @@ C. No, suspect has a weapon, recommend maintaining minimum safe distance.`;
                 // Autoplay can be blocked in some contexts; student started with SPACE so this should generally succeed.
             });
 
-            const maxSeconds = NARRATION_CLIP_MAX_SECONDS[next];
+            const clipId = narrationClipId(next);
+            const maxSeconds = NARRATION_CLIP_MAX_SECONDS[clipId];
             if (Number.isFinite(maxSeconds) && maxSeconds > 0) {
                 const token = narrationActiveSection;
                 narrationTimeUpdateHandler = () => {
@@ -3739,6 +3974,15 @@ C. No, suspect has a weapon, recommend maintaining minimum safe distance.`;
                     }
                 };
                 narrationAudio.addEventListener('timeupdate', narrationTimeUpdateHandler);
+
+                // Fallback timer (some environments fire timeupdate infrequently)
+                narrationStopTimer = setTimeout(() => {
+                    if (narrationActiveSection !== token) return;
+                    if (narrationCurrentClipKey !== next) return;
+                    narrationAudio.pause();
+                    narrationAudio.currentTime = 0;
+                    playNextNarrationClip();
+                }, Math.round(maxSeconds * 1000));
             }
         }
 
@@ -3755,7 +3999,7 @@ C. No, suspect has a weapon, recommend maintaining minimum safe distance.`;
             };
             // Delay narration at the start of certain sections to control pacing.
             const sectionDelayMs =
-                (sectionNumber === 1) ? 2500 :
+                (sectionNumber === 1) ? 1500 :
                 (sectionNumber === 2) ? 2000 :
                 (sectionNumber === 5) ? 1000 :
                 0;
@@ -4014,9 +4258,10 @@ C. No, suspect has a weapon, recommend maintaining minimum safe distance.`;
         // Cinematic Drone Animation Configuration
         const droneAnimation = {
             imageName: "a3.png",
-            startLocation: { x: 60.0, y: 11.7 },
-            endLocation: { x: 38.0, y: 77.6 },
-            followZoom: 2.0,  // How close camera follows drone
+            startLocation: { x: 60.3, y: 9.7 },
+            endLocation: { x: 38.2, y: 75.7 },
+            wideZoom: 1.0, // establishing shot zoom (set < 1 to zoom out further)
+            followZoom: 1.70,  // < 1 = zoomed out (wider), > 1 = tighter
             duration: 6000,  // milliseconds
             trackingAnchor: { x: 0, y: 0 }
         };
@@ -4066,7 +4311,8 @@ C. No, suspect has a weapon, recommend maintaining minimum safe distance.`;
             cinematicMapWrapper.style.transformOrigin = '0px 0px';
             
             const startTime = performance.now();
-            const { startLocation, endLocation, followZoom, duration } = droneAnimation;
+            const { startLocation, endLocation, followZoom, wideZoom, duration } = droneAnimation;
+            const startZoom = Number.isFinite(Number(wideZoom)) ? Number(wideZoom) : 1;
             
             function animate(currentTime) {
                 if (!state.showingVideo) return;
@@ -4093,13 +4339,21 @@ C. No, suspect has a weapon, recommend maintaining minimum safe distance.`;
                 // active CSS transform, so W/H grow with scale and break e/f every frame. Use
                 // offsetWidth/offsetHeight (layout box, pre-transform on this element).
                 function cameraMatrixForDrone(pxPercent, pyPercent, s) {
-                    const W = cinematicMapWrapper.offsetWidth || cinematicMap.offsetWidth || 1;
-                    const H = cinematicMapWrapper.offsetHeight || cinematicMap.offsetHeight || 1;
-                    const px = (pxPercent / 100) * W;
-                    const py = (pyPercent / 100) * H;
-                    const e = W / 2 - px * s;
-                    const f = H / 2 - py * s;
-                    return { e, f, W, H };
+                    // Centering should be relative to the visible viewport (cinematicWrapper),
+                    // not the image's own box. Otherwise you can end up "centered" within the image
+                    // while the viewport has extra black padding above/below.
+                    const viewportW = cinematicWrapper.clientWidth || 1;
+                    const viewportH = cinematicWrapper.clientHeight || 1;
+
+                    // Percent coordinates are relative to the underlying map image.
+                    const imgW = cinematicMap.offsetWidth || cinematicMapWrapper.offsetWidth || 1;
+                    const imgH = cinematicMap.offsetHeight || cinematicMapWrapper.offsetHeight || 1;
+                    const px = (pxPercent / 100) * imgW;
+                    const py = (pyPercent / 100) * imgH;
+
+                    const e = viewportW / 2 - px * s;
+                    const f = viewportH / 2 - py * s;
+                    return { e, f, viewportW, viewportH, imgW, imgH };
                 }
                 
                 if (progress < 0.2) {
@@ -4109,7 +4363,7 @@ C. No, suspect has a weapon, recommend maintaining minimum safe distance.`;
                         ? 2 * zoomProgress * zoomProgress 
                         : 1 - Math.pow(-2 * zoomProgress + 2, 2) / 2;
                     
-                    scale = 1 + (followZoom - 1) * easedZoom;
+                    scale = startZoom + (followZoom - startZoom) * easedZoom;
                     
                     droneX = startLocation.x;
                     droneY = startLocation.y;
@@ -4167,18 +4421,18 @@ C. No, suspect has a weapon, recommend maintaining minimum safe distance.`;
         // Video ended handler (now animation ended)
         function onVideoEnd() {
             state.showingVideo = false;
+
+            // Show angle selection immediately so the intel/CLI screen never flashes through.
+            // (We still close/reset the cinematic modal right after.)
+            showAngleSelection();
+
             videoModal.classList.remove('active');
-            
+
             // Reset animation
             cinematicMapWrapper.classList.remove('animating');
             cinematicDrone.classList.remove('animating');
             cinematicMapWrapper.style.transform = '';
             cinematicDrone.style.opacity = '1';  // Keep drone visible at end
-            
-            // Delay then show angle selection
-            setTimeout(() => {
-                showAngleSelection();
-            }, 1000);  // 1 second transition delay
         }
 
         // ============================================
@@ -4790,10 +5044,14 @@ Choose the approach direction that will give your team the best tactical advanta
             // Highlight the corresponding zone on the map
             highlightZone(positionKey);
             
-            // Display position details with prompt to confirm
-            const detailsDiv = document.getElementById('position-details');
-            detailsDiv.innerHTML = `
-                <div class="position-title">${data.title}</div>
+            // Display position details in pop-out panel on the map (avoids scroll UX)
+            const popout = document.getElementById('position-popout');
+            if (popout) {
+                popout.innerHTML = `
+                <div class="popout-header">
+                    <div class="position-title">${data.title}</div>
+                    <button type="button" class="popout-close" id="position-popout-close">CLOSE</button>
+                </div>
                 <div class="position-description">${data.description}</div>
                 <div class="position-stat">
                     <div class="stat-item">
@@ -4813,7 +5071,10 @@ Choose the approach direction that will give your team the best tactical advanta
                     [TYPE POSITION IN BOX BELOW AND PRESS ENTER TO CONFIRM]
                 </div>
             `;
-            detailsDiv.classList.add('active');
+                popout.classList.add('active');
+                const closeBtn = document.getElementById('position-popout-close');
+                if (closeBtn) closeBtn.addEventListener('click', () => popout.classList.remove('active'), { once: true });
+            }
             
             console.log('Selected position:', positionKey);
         }
@@ -4838,10 +5099,14 @@ Choose the approach direction that will give your team the best tactical advanta
             angleInput.disabled = true;
             angleInput.style.opacity = '0.5';
             
-            // Update details to show confirmed
-            const detailsDiv = document.getElementById('position-details');
-            detailsDiv.innerHTML = `
-                <div class="position-title">${data.title} - CONFIRMED</div>
+            // Update popout to show confirmed (optional)
+            const popout = document.getElementById('position-popout');
+            if (popout) {
+                popout.innerHTML = `
+                <div class="popout-header">
+                    <div class="position-title">${data.title} - CONFIRMED</div>
+                    <button type="button" class="popout-close" id="position-popout-close">CLOSE</button>
+                </div>
                 <div class="position-description">${data.description}</div>
                 <div class="position-stat">
                     <div class="stat-item">
@@ -4861,6 +5126,10 @@ Choose the approach direction that will give your team the best tactical advanta
                     *** POSITION CONFIRMED - PROCEEDING TO RECONNAISSANCE ***
                 </div>
             `;
+                popout.classList.add('active');
+                const closeBtn = document.getElementById('position-popout-close');
+                if (closeBtn) closeBtn.addEventListener('click', () => popout.classList.remove('active'), { once: true });
+            }
             
             console.log('CONFIRMED position:', state.selectedAngle);
             
@@ -5186,6 +5455,13 @@ Choose the approach direction that will give your team the best tactical advanta
         angleOptions.forEach(button => {
             button.addEventListener('click', () => {
                 const position = button.dataset.angle;
+                // Clicking cancels pending confirmation for manual entry
+                state.pendingPositionConfirm = null;
+                const confirmEl = document.getElementById('angle-input-confirm');
+                if (confirmEl) {
+                    confirmEl.classList.remove('active');
+                    confirmEl.textContent = '';
+                }
                 selectAngle(position);
             });
         });
@@ -5195,9 +5471,28 @@ Choose the approach direction that will give your team the best tactical advanta
             if (e.key === 'Enter' && !state.positionLocked) {
                 const value = e.target.value.toUpperCase();
                 if (['A', 'B', 'C'].includes(value)) {
-                    // Select this position and lock it in
+                    const confirmEl = document.getElementById('angle-input-confirm');
+                    const pending = state.pendingPositionConfirm;
+
+                    // Second Enter with same value confirms
+                    if (pending && pending.armed && pending.angle === value) {
+                        if (confirmEl) {
+                            confirmEl.classList.remove('active');
+                            confirmEl.textContent = '';
+                        }
+                        state.pendingPositionConfirm = null;
+                        selectAngle(value);
+                        lockSelection();
+                        return;
+                    }
+
+                    // First Enter arms confirmation
+                    state.pendingPositionConfirm = { angle: value, armed: true };
                     selectAngle(value);
-                    lockSelection();
+                    if (confirmEl) {
+                        confirmEl.textContent = `Are you sure you would like to select position "${value}"? This decision is final and cannot be changed. Press Enter again to submit.`;
+                        confirmEl.classList.add('active');
+                    }
                 }
                 // If invalid input, do nothing - must type A, B, or C
             }
@@ -5207,6 +5502,15 @@ Choose the approach direction that will give your team the best tactical advanta
         angleInput.addEventListener('input', (e) => {
             if (state.positionLocked) return;
             const value = e.target.value.toUpperCase();
+            // Changing input cancels pending confirmation
+            if (state.pendingPositionConfirm && state.pendingPositionConfirm.armed && state.pendingPositionConfirm.angle !== value) {
+                state.pendingPositionConfirm = null;
+                const confirmEl = document.getElementById('angle-input-confirm');
+                if (confirmEl) {
+                    confirmEl.classList.remove('active');
+                    confirmEl.textContent = '';
+                }
+            }
             if (['A', 'B', 'C'].includes(value)) {
                 selectAngle(value);
             }

@@ -469,11 +469,19 @@
             <div class="control-panel">
                 <h3>3. Cinematic Settings</h3>
                 <div class="slider-container">
+                    <label>Wide Shot Zoom: <span class="slider-value" id="wide-zoom-value">1.00x</span></label>
+                    <input type="range" id="wide-zoom-slider" min="0.5" max="1.2" step="0.05" value="1"
+                           oninput="updateWideZoomValue(this.value)">
+                    <div style="font-size: 0.7rem; color: #888; margin-top: 3px;">
+                        Overall zoom for the establishing shot (lower = zoomed out further)
+                    </div>
+                </div>
+                <div class="slider-container">
                     <label>Camera Follow Zoom: <span class="slider-value" id="zoom-value">2.0x</span></label>
-                    <input type="range" id="zoom-slider" min="1.5" max="4" step="0.1" value="2" 
+                    <input type="range" id="zoom-slider" min="0.5" max="4" step="0.05" value="2" 
                            oninput="updateZoomValue(this.value)">
                     <div style="font-size: 0.7rem; color: #888; margin-top: 3px;">
-                        How close camera stays to drone (higher = tighter shot)
+                        Lower = zoomed out (wider view), higher = tighter shot
                     </div>
                 </div>
                 <div class="slider-container">
@@ -517,6 +525,7 @@
         let isAnimating = false;
         let imageName = '';
         let zoomLevel = 2.0;
+        let wideZoom = 1.0;
         let duration = 6;
 
         // DOM Elements
@@ -630,7 +639,8 @@ const droneAnimation = {
     imageName: "${imageName}",
     startLocation: { x: ${startLocation.x.toFixed(1)}, y: ${startLocation.y.toFixed(1)} },
     endLocation: { x: ${endLocation.x.toFixed(1)}, y: ${endLocation.y.toFixed(1)} },
-    followZoom: ${zoomLevel.toFixed(1)},  // How close camera follows drone
+    wideZoom: ${wideZoom.toFixed(2)},  // establishing shot zoom (can be < 1 for wider view)
+    followZoom: ${zoomLevel.toFixed(2)},  // < 1 = zoomed out (wider), > 1 = tighter
     duration: ${duration}000  // milliseconds
 };
 
@@ -643,13 +653,13 @@ const droneAnimation = {
 //   - Effect: "Establishing shot" then focus on our subject
 //
 // Phase 2 (20-35%): LIFTOFF
-//   - Camera: Stays locked on drone (${zoomLevel.toFixed(1)}x zoom)
+//   - Camera: Stays locked on drone (${zoomLevel.toFixed(2)}x zoom)
 //   - Drone: Lifts off vertically from ground
 //   - View: Drone fills most of the screen
 //   - Effect: Dramatic close-up liftoff
 //
 // Phase 3 (35-100%): FLIGHT
-//   - Camera: Follows drone closely (${zoomLevel.toFixed(1)}x zoom maintained)
+//   - Camera: Follows drone closely (${zoomLevel.toFixed(2)}x zoom maintained)
 //   - Drone: Flies from START to LANDING zone
 //   - Tracking: Camera pans/moves to keep drone centered
 //   - Effect: Immersive "follow cam" like action films
@@ -674,7 +684,13 @@ const droneAnimation = {
         // Update zoom value
         function updateZoomValue(value) {
             zoomLevel = parseFloat(value);
-            document.getElementById('zoom-value').textContent = `${zoomLevel.toFixed(1)}x`;
+            document.getElementById('zoom-value').textContent = `${zoomLevel.toFixed(2)}x`;
+            updateCodeOutput();
+        }
+
+        function updateWideZoomValue(value) {
+            wideZoom = parseFloat(value);
+            document.getElementById('wide-zoom-value').textContent = `${wideZoom.toFixed(2)}x`;
             updateCodeOutput();
         }
 
@@ -727,8 +743,8 @@ const droneAnimation = {
                         ? 2 * zoomProgress * zoomProgress 
                         : 1 - Math.pow(-2 * zoomProgress + 2, 2) / 2;
                     
-                    // Start at normal (1x), zoom IN to closeup
-                    scale = 1 + (zoomLevel - 1) * easedZoom;
+                    // Start at wide shot (wideZoom), zoom toward close follow (zoomLevel)
+                    scale = wideZoom + (zoomLevel - wideZoom) * easedZoom;
                     
                     // Center on start location
                     const centerX = (startLocation.x / 100) * rect.width;
